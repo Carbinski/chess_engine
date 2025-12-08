@@ -1,0 +1,239 @@
+import random
+import chess
+import time
+from typing import List
+
+
+class BasicSearchBot:
+    """
+    Docstring for BasicSearchBot
+
+    Features:
+    1. Basic Piece Weights
+    2. Mobility Score
+    3. Alpha Beta Pruning Search
+    4. Move Ordering for optimal Alph-Beta Pruning Search
+    """
+
+    def __init__(self):
+        self.kingWt = 20000
+        self.queenWt = 900
+        self.rookWt = 500
+        self.bishopWt = 300
+        self.knightWt = 300
+        self.pawnWt = 100
+
+        self.mobilityWt = 1
+        self.board = None
+        self.depth = 3
+
+        self.stat_tracking = False
+        self.positions_searched = 0
+        self.total_positions_searched = 0
+        self.total_time = 0
+        self.total_moves = 0
+
+    def evaluate(self) -> int:
+        """
+        Docstring for evaluate
+
+        Calculates eval of given current position. Using Negmax algorithm
+        
+        :param self: DumbEvalV2Bot contains self parameters like piece weights and mobility weights
+        :param board: The current board / position to be avaluation
+        :type board: chess.Board
+        :return: current position eval : (materialScore + mobilityScore) * who2Move
+        :rtype: int
+        """
+        if self.board.is_checkmate():
+            return 1000000
+        
+        if self.board.is_game_over():
+            return 0
+        
+        wP = len(self.board.pieces(chess.PAWN, chess.WHITE))
+        wN = len(self.board.pieces(chess.KNIGHT, chess.WHITE))
+        wB = len(self.board.pieces(chess.BISHOP, chess.WHITE))
+        wR = len(self.board.pieces(chess.ROOK, chess.WHITE))
+        wQ = len(self.board.pieces(chess.QUEEN, chess.WHITE))
+
+        bP = len(self.board.pieces(chess.PAWN, chess.BLACK))
+        bN = len(self.board.pieces(chess.KNIGHT, chess.BLACK))
+        bB = len(self.board.pieces(chess.BISHOP, chess.BLACK))
+        bR = len(self.board.pieces(chess.ROOK, chess.BLACK))
+        bQ = len(self.board.pieces(chess.QUEEN, chess.BLACK))
+
+        wK = len(self.board.pieces(chess.KING, chess.WHITE))
+        bK = len(self.board.pieces(chess.KING, chess.BLACK))
+
+        materialScore = (
+            self.kingWt  * (wK-bK) +
+            self.queenWt * (wQ-bQ) +
+            self.rookWt  * (wR-bR) +
+            self.bishopWt * (wB-bB) +
+            self.knightWt * (wN-bN) +
+            self.pawnWt  * (wP-bP)
+        )
+    
+        total_eval = materialScore
+
+        return total_eval
+        
+    def piece_to_points(self, piece) -> int:
+        if piece.piece_type == chess.PAWN:
+            return self.pawnWt
+        elif piece.piece_type == chess.KNIGHT:
+            return self.knightWt
+        elif piece.piece_type == chess.BISHOP:
+            return self.bishopWt
+        elif piece.piece_type == chess.ROOK:
+            return self.rookWt
+        elif piece.piece_type == chess.QUEEN:
+            return self.queenWt
+        elif piece.piece_type == chess.KING:
+            return self.kingWt
+
+        print("[ERROR] square_to_point : NO VALID PIECES FOUND")
+        return -1
+        
+    def orderMoves(self, moves: List[chess.Move]) -> List[chess.Move]:
+        move_scores = []
+        
+        for move in moves:
+            score = 0
+
+            # Bonus for giving checks
+            if self.board.gives_check(move):
+                score += 50
+            
+            # Bonus for castling
+            if self.board.is_castling(move):
+                score += 60
+
+            # Bonus for captures
+            if self.board.is_capture(move):
+                if self.board.is_en_passant(move):
+                    victim_points = self.pawnWt
+                else:
+                    victim_points = self.piece_to_points(self.board.piece_at(move.to_square))
+
+                attacker_points = self.piece_to_points(self.board.piece_at(move.from_square))
+                
+                score += (10 * victim_points) - attacker_points
+            
+            # Bonus for promotion
+            if move.promotion:
+                score += 900
+                if move.promotion == chess.QUEEN:
+                    score += 100
+            
+            # Take to long for now...
+
+            # # Penalize for moving into an attacked square
+            # if self.board.is_attacked_by(color= not self.board.turn, square=move.to_square):
+            #     score -= 2 * self.piece_to_points(self.board.piece_at(move.from_square))
+
+            # # Bonus for moving into a supported square:
+            # if self.board.is_attacked_by(color=self.board.turn, square=move.to_square):
+                score += self.piece_to_points(self.board.piece_at(move.from_square))
+            
+            move_scores.append((score, move))
+
+        # Sort moves, return list
+        move_scores.sort(key=lambda x: x[0], reverse=True)
+        return [item[1] for item in move_scores]
+
+    def search(self, depth: int, alpha: int, beta: int, turn) -> int:
+        """
+        Docstring for search
+
+        Recursive searching function using alpha-beta pruning
+        
+        :param self: Stores board, number of positions searched
+        :param depth: Depth that needs to be searched
+        :type depth: int
+        :param alpha: maximum value player can guarantee at any point of search
+        :type alpha: int
+        :param beta: minimum value player can gaurantee at any point of search
+        :type beta: int
+        :return: max alpha : maximum value for the position
+        :rtype: int
+
+        """
+        if self.stat_tracking:
+            self.positions_searched += 1
+
+        # idk why the signs have to be flipped but it isn't working when they aren't flipped
+        
+        if depth == 0 or self.board.is_game_over():
+            return turn * self.evaluate()
+        
+        moves = self.board.legal_moves
+        moves = self.orderMoves(moves)
+        
+        max_eval = float('-inf')
+
+        for move in moves:
+            self.board.push(move)
+            eval = - self.search(depth - 1, alpha, beta, -turn)
+            self.board.pop()
+
+            max_eval = max(max_eval, eval)
+            alpha = max(alpha, eval)
+            if beta <= alpha:
+                break
+
+        return turn * max_eval
+
+
+    def select_move(self, board: chess.Board) -> chess.Move:
+        self.board = board
+
+        if self.stat_tracking:
+            start_time = time.perf_counter()
+            self.positions_searched = 0
+            self.total_moves += 1
+
+        best_eval = float('-inf')
+        best_moves = []
+    
+        alpha = float('-inf')
+        beta = float('inf')
+
+        moves = board.legal_moves
+        moves = self.orderMoves(moves)
+        
+        for move in moves:
+            if self.stat_tracking:
+                self.positions_searched += 1
+
+            self.board.push(move)
+
+            current_eval = self.search(
+                self.depth - 1, alpha, beta, -1
+            )
+
+            self.board.pop()
+            
+            if current_eval > best_eval:
+                best_eval = current_eval
+                best_moves = [move]
+            
+            alpha = max(alpha, best_eval)
+
+        print(best_moves)
+        print(best_eval)
+
+        if self.stat_tracking:
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            # print(f"Evaluated {self.positions_searched} positions in {elapsed_time:.4f} seconds")
+
+            self.total_time += elapsed_time
+            self.total_positions_searched += self.positions_searched
+
+        if best_moves:
+            return random.choice(best_moves)    
+        print("ERROR: No best move found")
+        return -1
+
