@@ -164,7 +164,7 @@ class BasicSearchBot:
             self.positions_searched += 1
         
         if depth == 0:
-            return self.evaluate();
+            return self.evaluate()
 
         max_eval = float("-inf")
 

@@ -43,7 +43,7 @@ class FastBotV2:
         self.curr_eval = 0
 
         self.board = None
-        self.depth = 4
+        self.depth = 5
 
         # Speed Testing Tools
         self.stat_tracking = False  

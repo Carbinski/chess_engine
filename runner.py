@@ -10,6 +10,10 @@ from bots.fast_search_v2 import FastBotV2
 from bots.fast_search_v3 import FastBotV3
 from bots.fast_search_v4 import FastBotV4
 from bots.midgame_v1 import MidGameBotV1
+from bots.midgame_v2 import MidGameBotV2
+from bots.midgame_v3 import MidGameBotV3
+from bots.midgame_v4 import MidGameBotV4
+from bots.minimal_v1 import MiniBotV1
 
 ChessAlgo = Callable[[chess.Board], chess.Move]
 
@@ -253,27 +257,33 @@ def run(algo1: ChessAlgo, algo2: ChessAlgo, total_games=1000) -> Tuple[float, fl
     return algo1_score, draws, algo2_score
 
 if __name__ == "__main__":
-    bot_1 = FastBotV4()
-    bot_2 = MidGameBotV1()
+    bot_1 = MiniBotV1()
+    bot_2 = FastBotV4()
 
-    # play_and_render_game(white_algo=bot_1, black_algo=bot_2)
-    # # print(f"Total positions searched: {bot_1.total_positions_searched}")
-    # print(f"Total time: {bot_1.total_time}")
-    # print(f"Time per move: {bot_1.total_time / bot_1.total_moves}")
+    play_and_render_game(white_algo=bot_1, black_algo=bot_2)
+    print(f"Total time: {bot_1.total_time}")
+    print(f"Time per move: {bot_1.total_time / bot_1.total_moves}")
     # ~0.27 seconds per move for FastBotV2
     # ~0.13 seconds per move for FastBotV3
     # ~0.11657 seconds per move for FastBotV4 against FastBotV2 (Depth = 4)
     # ~0.13201 seconds per move for MidGameBotV1 against FastBotV4 (Depth = 4)
+    # ~0.21402 seconds per move for MidGameBotV2 against FastBotV4 (Depth = 4)
 
+    # ~2.17278 seconds per move for MidGameBotV2 against FastBotV4 (Depth = 5)
+
+    # ~12.20536736248889  seconds per move for MidGameBotV3 against FastBotV4 (Depth = 6)
+    # ~12.245790603436978 seconds per move for MidGameBotV3 against FastBotV4 (Depth = 6) w/ Pypy3
+    # ~18.024962981533328 seconds per move for MidGameBotV4 against FastBotV4 (Depth = 6)
+    # ~17.949637472189757 seconds per move for MidGameBotV4 against FastBotV4 (Depth = 6) w/ Pypy3
 
     # play_game(white_algo=bot_1, black_algo=bot_2)
 
-    results = run(algo1=bot_1, algo2=bot_2, total_games=50)
+    # results = run(algo1=bot_1, algo2=bot_2, total_games=10)
 
-    print("\n" + "*" * 50)
-    print(f"Algorithm 1: {results[0]}")
-    print(f"Draws: {results[1]}")
-    print(f"Algorithm 2: {results[2]}")
+    # print("\n" + "*" * 50)
+    # print(f"Algorithm 1: {results[0]}")
+    # print(f"Draws: {results[1]}")
+    # print(f"Algorithm 2: {results[2]}")
 
     # play_game_with_computer(True, bot_1)
     # print(f"Total positions searched: {bot_1.total_positions_searched}")
