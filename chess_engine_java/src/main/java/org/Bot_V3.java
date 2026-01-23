@@ -15,7 +15,7 @@ import support.TranspositionTable;
  * 2. Enhanced Delta Move --> Slightly faster
  * 3. Added En-Passant to LVA-MVV
  */
-public class Bot_V2 implements JavaChessBot {
+public class Bot_V3 implements JavaChessBot {
     Board board;
     int depth;
 
@@ -52,7 +52,7 @@ public class Bot_V2 implements JavaChessBot {
     int[][] eg_tables = {null, eg_pawn_table, eg_knight_table, eg_bishop_table, eg_rook_table, eg_queen_table, eg_king_table};
 
 
-    public Bot_V2(int depth, boolean stat_tracking, boolean random_opening) {
+    public Bot_V3(int depth, boolean stat_tracking, boolean random_opening) {
         this.depth = depth;
         this.stat_tracking = stat_tracking;
         this.random_opening = random_opening;
