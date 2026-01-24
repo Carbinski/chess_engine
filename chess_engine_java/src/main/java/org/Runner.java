@@ -235,21 +235,21 @@ public class Runner {
     // ---------------------------------------------------------
     public static void main(String[] args) throws Exception {
 
-//        ChessBot javaBotV1 = new JavaBotWrapper(new BasicBot_V1(5, false, false), "JavaV1");
-//        ChessBot javaBotV1_0 = new JavaBotWrapper(new BasicBot_V1(5, true, false), "JavaV1");
-//        ChessBot javaBotV2 = new JavaBotWrapper(new BasicBot_V2(5, true, true), "JavaV2");
-//        ChessBot javaBotV3 = new JavaBotWrapper(new BasicBot_V3(5, true, false), "JavaV3");
-//        ChessBot javaBotV4 = new JavaBotWrapper(new FastBot_V1(5, true, true), "JavaV4");
-//        ChessBot javaBotV5 = new JavaBotWrapper(new FastBot_V2(5, true, true), "JavaV5");
-        ChessBot javaBotV6 = new JavaBotWrapper(new Bot_V1(5, true, false), "JavaV6");
-        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(5, true, false), "JavaV7");
+        ChessBot javaBotV1 = new JavaBotWrapper(new BasicBot_V1(4, true, true), "JavaV1");
+        ChessBot javaBotV1_0 = new JavaBotWrapper(new BasicBot_V1(5, true, true), "JavaV1");
+        ChessBot javaBotV2 = new JavaBotWrapper(new BasicBot_V2(5, true, true), "JavaV2");
+        ChessBot javaBotV3 = new JavaBotWrapper(new BasicBot_V3(5, true, true), "JavaV3");
+        ChessBot javaBotV4 = new JavaBotWrapper(new FastBot_V1(5, true, true), "JavaV4");
+        ChessBot javaBotV5 = new JavaBotWrapper(new FastBot_V2(5, true, true), "JavaV5");
+        ChessBot javaBotV6 = new JavaBotWrapper(new Bot_V1(5, true, true), "JavaV6");
+        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(5, true, true), "JavaV7");
 
 
         // Mode A: Java vs Java
-        playAndRenderGame(javaBotV7, javaBotV6, "java_vs_java.html");
-        playAndRenderGame(javaBotV6, javaBotV7, "java_vs_java.html");
-        System.out.println(javaBotV7.getStats());
-        System.out.println(javaBotV6.getStats());
+//        playAndRenderGame(javaBotV7, javaBotV6, "java_vs_java.html");
+//        playAndRenderGame(javaBotV6, javaBotV7, "java_vs_java.html");
+//        System.out.println(javaBotV7.getStats());
+//        System.out.println(javaBotV6.getStats());
         // Plugged In : Minimal Background Tasks
         // BasicBot_V1 (Depth 6) vs BasicBot_V1 (Depth 4) : 3220 ms per move (111)
         // BasicBot_V2 (Depth 6) vs BasicBot_V1 (Depth 4) : 3995 ms per move (54)
@@ -262,9 +262,9 @@ public class Runner {
 
         // FastBot_V2 (Depth 8) - 4185 ms
 //
-//        playTournament(javaBotV7, javaBotV6, 10);
-//        System.out.println(javaBotV6.getStats());
-//        System.out.println(javaBotV2.getStats());
+        playTournament(javaBotV6, javaBotV7, 10);
+        System.out.println(javaBotV6.getStats());
+        System.out.println(javaBotV7.getStats());
 
         // Mode B: Human vs Java
 //        playHumanVsBot(false, javaBotV5, "human_vs_java.html");

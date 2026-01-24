@@ -29,9 +29,12 @@ public class Bot_V3 implements JavaChessBot {
     private static final int IDX_MG = 1;
     private static final int IDX_EG = 2;
 
-    private final int[] delta_buffer = new int[3];
-    private final int[][] sort_buffers = new int[64][256]; // Assumes Max Depth of 64 and max 256 moves per position
+    private static final int MAX_DEPTH = 64;
 
+    private final int[] delta_buffer = new int[3];
+    private final int[][] sort_buffers = new int[MAX_DEPTH][256]; // Assumes Max Depth of 64 and max 256 moves per position
+
+    private Move[][] killer_moves = new Move[MAX_DEPTH][2];
     TranspositionTable tt = new TranspositionTable(2000000);
 
     int[] mg_pawn_table   = {0,0,0,0,0,0,0,0,-35,-1,-20,-23,-15,24,38,-22,-26,-4,-4,-10,3,3,33,-12,-27,-2,-5,12,17,6,10,-25,-14,13,6,21,23,12,17,-23,-6,7,26,31,65,56,25,-20,98,134,61,95,68,126,34,-11,0,0,0,0,0,0,0,0};
