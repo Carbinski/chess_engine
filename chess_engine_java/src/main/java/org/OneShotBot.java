@@ -38,7 +38,7 @@ public class OneShotBot {
                     break;
             }
             
-            Move move = bot.select_move(board, timeLimit * 30);
+            Move move = bot.select_move(board, timeLimit); // Pass regular time limit (frontend sends full remaining time)
             System.out.println(move.toString());
             
         } catch (Exception e) {

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Chess } from "chess.js";
+import { useState, useEffect, useRef } from "react";
+import { Chess, Move } from "chess.js";
 import { Chessboard } from "react-chessboard";
 
 export default function ChessGame() {
@@ -12,15 +12,33 @@ export default function ChessGame() {
     const [lastMove, setLastMove] = useState<{ from: string, to: string } | null>(null);
     const [botStats, setBotStats] = useState<{ time: number, depth: number } | null>(null);
 
-    const [timeLimit, setTimeLimit] = useState(5000);
+    // Time Control State
+    const [gameTime, setGameTime] = useState(60000); // Default 1 minute
+    const [whiteTime, setWhiteTime] = useState(60000);
+    const [blackTime, setBlackTime] = useState(60000);
+    const [gameStarted, setGameStarted] = useState(false); // Helper to track if clock should run for White
+
+    // For non-timebots, this might still be used if we wanted to support fixed time, 
+    // but for TimeBot we use gameTime. We can keep this state or repurpose UI.
+    // The requirement says "instead of having an allotted time per move... there are two clocks".
+    // So for TimeBot, we hide the invalid "Time Limit" and show "Game Time".
 
     async function makeBotMove(currentFen: string) {
         setLoading(true);
         try {
+            // Determine time limit based on whose turn it is
+            // If bot is playing, pass its remaining time
+            const isWhiteTurn = game.turn() === 'w';
+            const remainingTime = isWhiteTurn ? whiteTime : blackTime;
+
             const response = await fetch("http://127.0.0.1:8000/move", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fen: currentFen, botId, timeLimit }),
+                body: JSON.stringify({
+                    fen: currentFen,
+                    botId,
+                    timeLimit: remainingTime // Pass remaining game time
+                }),
             });
 
             if (!response.ok) {
@@ -64,16 +82,53 @@ export default function ChessGame() {
         }
     }
 
+    // Timer Logic
+    useEffect(() => {
+        // If game is over, stop timer
+        if (game.isGameOver() || (whiteTime <= 0) || (blackTime <= 0)) return;
+
+        // If player is white, clock only starts after first move
+        if (playerColor === 'w' && !gameStarted && game.turn() === 'w') {
+            return;
+        }
+
+        const interval = setInterval(() => {
+            if (game.turn() === 'w') {
+                setWhiteTime((t) => Math.max(0, t - 100));
+            } else {
+                setBlackTime((t) => Math.max(0, t - 100));
+            }
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [game, whiteTime, blackTime, gameStarted, playerColor]);
+
+    // Check for flags (timeout)
+    useEffect(() => {
+        if (whiteTime <= 0) {
+            // White lost on time
+        }
+        if (blackTime <= 0) {
+            // Black lost on time
+        }
+    }, [whiteTime, blackTime]);
+
     // Trigger bot move if it's bot's turn
     useEffect(() => {
         if (!loading && !game.isGameOver() && game.turn() !== playerColor) {
+            // Check if time ran out
+            if (playerColor === 'w' && blackTime <= 0) return;
+            if (playerColor === 'b' && whiteTime <= 0) return;
+
             makeBotMove(game.fen());
         }
-    }, [game, playerColor, loading]);
+    }, [game, playerColor, loading, blackTime, whiteTime]); // Added timedeps to prevent move if OOT? 
+    // Actually standard check inside effect is better.
 
     function onDrop(sourceSquare: string, targetSquare: string) {
         if (loading) return false;
         if (game.turn() !== playerColor) return false;
+        if (whiteTime <= 0 || blackTime <= 0) return false;
 
         // 1. Create a potential new game state to validate move synchronously
         const gameCopy = new Chess(game.fen());
@@ -93,24 +148,36 @@ export default function ChessGame() {
 
         // 2. Valid move: Update state
         setGame(gameCopy);
+        setGameStarted(true); // Player made a move, clock can start now (if white)
 
         // 3. check if game is over
         if (gameCopy.isGameOver()) {
             return true;
         }
 
-        // Trigger bot move handled by useEffect/render logic above or explicit call here?
-        // Actually, better to just let the update trigger it, but since we are inside onDrop, 
-        // we can just leave it to the condition above? 
-        // Wait, the condition above is inside the component body, so it runs on render. 
-        // When setGame(gameCopy) happens, re-render occurs, condition passes, bot moves.
-        // So we don't need explicit setTimeout here anymore.
-
         // Update highlight for player move
         setLastMove({ from: sourceSquare, to: targetSquare });
 
         return true;
     }
+
+    // Helper to format time
+    const formatTime = (ms: number) => {
+        const totalSeconds = Math.ceil(ms / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const resetGame = (newTime?: number) => {
+        const t = newTime || gameTime;
+        setGame(new Chess());
+        setWhiteTime(t);
+        setBlackTime(t);
+        setGameStarted(false);
+        setBotStats(null);
+        setLastMove(null);
+    };
 
     return (
         <div className="flex flex-col items-center gap-4 max-w-xl w-full">
@@ -137,18 +204,20 @@ export default function ChessGame() {
 
                 {botId === "java_time_bot" && (
                     <div className="flex flex-col items-start">
-                        <label className="font-bold text-white text-sm mb-1">Time Limit:</label>
+                        <label className="font-bold text-white text-sm mb-1">Game Time:</label>
                         <select
-                            value={timeLimit}
-                            onChange={(e) => setTimeLimit(Number(e.target.value))}
+                            value={gameTime}
+                            onChange={(e) => {
+                                const t = Number(e.target.value);
+                                setGameTime(t);
+                                resetGame(t);
+                            }}
                             className="p-2 rounded bg-gray-800 text-white border border-gray-600"
                         >
-                            <option value={1000}>1 Second</option>
-                            <option value={3000}>3 Seconds</option>
-                            <option value={5000}>5 Seconds</option>
-                            <option value={10000}>10 Seconds</option>
-                            <option value={30000}>30 Seconds</option>
-                            <option value={60000}>60 Seconds</option>
+                            <option value={60000}>1 Minute</option>
+                            <option value={180000}>3 Minutes</option>
+                            <option value={300000}>5 Minutes</option>
+                            <option value={600000}>10 Minutes</option>
                         </select>
                     </div>
                 )}
@@ -159,15 +228,23 @@ export default function ChessGame() {
                         value={playerColor}
                         onChange={(e) => {
                             setPlayerColor(e.target.value as 'w' | 'b');
-                            setGame(new Chess()); // Reset game on side change
-                            setBotStats(null);
-                            setLastMove(null);
+                            resetGame(); // Reset game on side change
                         }}
                         className="p-2 rounded bg-gray-800 text-white border border-gray-600"
                     >
                         <option value="w">White</option>
                         <option value="b">Black</option>
                     </select>
+                </div>
+            </div>
+
+            {/* Time Display */}
+            <div className="flex justify-between w-full px-4 text-white font-mono font-bold text-xl">
+                <div className={`p-2 rounded ${game.turn() === 'w' ? 'bg-yellow-600' : 'bg-gray-700'}`}>
+                    White: {formatTime(whiteTime)}
+                </div>
+                <div className={`p-2 rounded ${game.turn() === 'b' ? 'bg-yellow-600' : 'bg-gray-700'}`}>
+                    Black: {formatTime(blackTime)}
                 </div>
             </div>
 
@@ -192,10 +269,12 @@ export default function ChessGame() {
             <div className="text-white font-bold text-lg flex flex-col items-center">
                 <div>
                     {loading ? "Bot is thinking..." :
-                        game.isCheckmate() ? (game.turn() === playerColor ? "Checkmate! You Lost!" : "Checkmate! You Win!") :
-                            game.isDraw() ? "Draw!" :
-                                game.isGameOver() ? "Game Over" :
-                                    game.turn() === playerColor ? "Your Turn" : "Bot's Turn"}
+                        whiteTime <= 0 ? "timeout! black wins!" :
+                            blackTime <= 0 ? "timeout! white wins!" :
+                                game.isCheckmate() ? (game.turn() === playerColor ? "Checkmate! You Lost!" : "Checkmate! You Win!") :
+                                    game.isDraw() ? "Draw!" :
+                                        game.isGameOver() ? "Game Over" :
+                                            game.turn() === playerColor ? "Your Turn" : "Bot's Turn"}
                 </div>
                 {botStats && (
                     <div className="text-sm text-gray-400 mt-2">
@@ -205,7 +284,7 @@ export default function ChessGame() {
             </div>
 
             <button
-                onClick={() => setGame(new Chess())}
+                onClick={() => resetGame()}
                 className="px-4 py-2 bg-red-600 rounded text-white font-bold hover:bg-red-700"
             >
                 Reset Game
