@@ -12,6 +12,9 @@ public class Runner {
     // Interface for all bots (Java or Python)
     public interface ChessBot {
         Move select_move(Board board);
+        default Move select_move(Board board, long time_left) {
+            return select_move(board);
+        }
         String getName();
         String getStats();
     }
@@ -29,6 +32,11 @@ public class Runner {
         @Override
         public Move select_move(Board board) {
             return bot.select_move(board);
+        }
+
+        @Override
+        public Move select_move(Board board, long time_left) {
+            return bot.select_move(board, time_left);
         }
 
         @Override
@@ -52,6 +60,9 @@ public class Runner {
         StringBuilder htmlHistory = new StringBuilder();
         updateHtmlFile(outputFilename, htmlHistory.toString(), board.getFen(), "Game Start");
         System.out.println("Game started! Open " + outputFilename + " to view.");
+
+        long whiteTime = 60000; // 60 seconds
+        long blackTime = 60000;
 
         while (!board.isMated() && !board.isDraw()) {
             boolean isHumanTurn = (board.getSideToMove() == Side.WHITE && humanIsWhite) ||
@@ -77,9 +88,18 @@ public class Runner {
                 moveStr = move.toString();
             } else {
                 System.out.println("\nBot is thinking...");
-                move = bot.select_move(board);
+                long startTime = System.currentTimeMillis();
+                long timeLeft = (board.getSideToMove() == Side.WHITE) ? whiteTime : blackTime;
+                
+                move = bot.select_move(board, timeLeft);
+                
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (board.getSideToMove() == Side.WHITE) whiteTime -= elapsed;
+                else blackTime -= elapsed;
+
                 moveStr = move.toString();
-                System.out.println("Bot played: " + moveStr);
+                System.out.println("Bot played: " + moveStr + " (Time left: " + 
+                    (board.getSideToMove() == Side.WHITE ? whiteTime : blackTime) + "ms)");
             }
 
             board.doMove(move);
@@ -119,14 +139,25 @@ public class Runner {
                         "<script>Chessboard('board-start', {position: '%s', showNotation: false, pieceTheme: 'pieces/{piece}.png'});</script>", startFen
         ));
 
+        long whiteTime = 60000;
+        long blackTime = 60000;
+
         while (!board.isMated() && !board.isDraw()) {
             ChessBot currentBot = (board.getSideToMove() == Side.WHITE) ? white : black;
-            Move move = currentBot.select_move(board);
+            long timeLeft = (board.getSideToMove() == Side.WHITE) ? whiteTime : blackTime;
+            
+            long startTime = System.currentTimeMillis();
+            Move move = currentBot.select_move(board, timeLeft);
+            long elapsed = System.currentTimeMillis() - startTime;
+            
+            if (board.getSideToMove() == Side.WHITE) whiteTime -= elapsed;
+            else blackTime -= elapsed;
+            
             board.doMove(move);
             moveCount++;
 
             String color = board.getSideToMove().flip() == Side.WHITE ? "White" : "Black";
-            System.out.println("Ply " + moveCount + ": " + move.toString());
+            System.out.println("Ply " + moveCount + ": " + move.toString() + " (" + elapsed + "ms)");
 
             String cardHtml = String.format(
                     "<div class='move-card'><div class='move-number'>Ply %d</div>" +
@@ -191,9 +222,22 @@ public class Runner {
         Board board = new Board();
         int moves = 0;
 
+        long whiteTime = 60000;
+        long blackTime = 60000;
+
         while (!board.isMated() && !board.isDraw() && moves < 200) {
             ChessBot currentBot = (board.getSideToMove() == Side.WHITE) ? white : black;
-            Move move = currentBot.select_move(board);
+            long timeLeft = (board.getSideToMove() == Side.WHITE) ? whiteTime : blackTime;
+
+            long startTime = System.currentTimeMillis();
+            Move move = currentBot.select_move(board, timeLeft);
+            long elapsed = System.currentTimeMillis() - startTime;
+            
+            if (board.getSideToMove() == Side.WHITE) whiteTime -= elapsed;
+            else blackTime -= elapsed;
+
+            if (whiteTime <= 0 || blackTime <= 0) break;
+
             board.doMove(move);
             moves++;
         }
@@ -235,21 +279,25 @@ public class Runner {
     // ---------------------------------------------------------
     public static void main(String[] args) throws Exception {
 
-//        ChessBot javaBotV1 = new JavaBotWrapper(new BasicBot_V1(5, false, false), "JavaV1");
-//        ChessBot javaBotV1_0 = new JavaBotWrapper(new BasicBot_V1(5, true, false), "JavaV1");
-//        ChessBot javaBotV2 = new JavaBotWrapper(new BasicBot_V2(5, true, true), "JavaV2");
-//        ChessBot javaBotV3 = new JavaBotWrapper(new BasicBot_V3(5, true, false), "JavaV3");
-//        ChessBot javaBotV4 = new JavaBotWrapper(new FastBot_V1(5, true, true), "JavaV4");
-//        ChessBot javaBotV5 = new JavaBotWrapper(new FastBot_V2(5, true, true), "JavaV5");
-        ChessBot javaBotV6 = new JavaBotWrapper(new Bot_V1(5, true, false), "JavaV6");
-        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(5, true, false), "JavaV7");
+        ChessBot javaBotV1 = new JavaBotWrapper(new BasicBot_V1(4, true, true), "JavaV1");
+        ChessBot javaBotV1_0 = new JavaBotWrapper(new BasicBot_V1(5, true, true), "JavaV1");
+        ChessBot javaBotV2 = new JavaBotWrapper(new BasicBot_V2(5, true, true), "JavaV2");
+        ChessBot javaBotV3 = new JavaBotWrapper(new BasicBot_V3(5, true, true), "JavaV3");
+        ChessBot javaBotV4 = new JavaBotWrapper(new FastBot_V1(5, true, true), "JavaV4");
+        ChessBot javaBotV5 = new JavaBotWrapper(new FastBot_V2(5, true, true), "JavaV5");
+        ChessBot javaBotV6 = new JavaBotWrapper(new Bot_V1(5, true, true), "JavaV6");
+        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(6, true, true), "JavaV7");
+        ChessBot javaBotV8 = new JavaBotWrapper(new Bot_V3(6, true, true), "JavaV8");
+        ChessBot javaBotV9 = new JavaBotWrapper(new Bot_V4(6, true, true), "JavaV9");
+        ChessBot timeBot = new JavaBotWrapper(new TimeBot_V1(64, true, true), "TimeBot");
+
 
 
         // Mode A: Java vs Java
-        playAndRenderGame(javaBotV7, javaBotV6, "java_vs_java.html");
-        playAndRenderGame(javaBotV6, javaBotV7, "java_vs_java.html");
-        System.out.println(javaBotV7.getStats());
-        System.out.println(javaBotV6.getStats());
+//        playAndRenderGame(javaBotV7, javaBotV6, "java_vs_java.html");
+//        playAndRenderGame(javaBotV6, javaBotV7, "java_vs_java.html");
+//        System.out.println(javaBotV7.getStats());
+//        System.out.println(javaBotV6.getStats());
         // Plugged In : Minimal Background Tasks
         // BasicBot_V1 (Depth 6) vs BasicBot_V1 (Depth 4) : 3220 ms per move (111)
         // BasicBot_V2 (Depth 6) vs BasicBot_V1 (Depth 4) : 3995 ms per move (54)
@@ -262,9 +310,13 @@ public class Runner {
 
         // FastBot_V2 (Depth 8) - 4185 ms
 //
-//        playTournament(javaBotV7, javaBotV6, 10);
-//        System.out.println(javaBotV6.getStats());
-//        System.out.println(javaBotV2.getStats());
+        // Mode A: TimeBot Test
+        System.out.println("Starting TimeBot test vs JavaV1...");
+        playTournament(timeBot, javaBotV1, 2);
+        
+        // playTournament(javaBotV9, javaBotV8, 10);
+        // System.out.println(javaBotV8.getStats());
+        // System.out.println(javaBotV9.getStats());
 
         // Mode B: Human vs Java
 //        playHumanVsBot(false, javaBotV5, "human_vs_java.html");
