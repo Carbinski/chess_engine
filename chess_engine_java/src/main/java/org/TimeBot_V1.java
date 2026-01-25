@@ -601,4 +601,9 @@ public class TimeBot_V1 implements JavaChessBot {
 
     @Override
     public int get_total_moves() { return total_moves; }
+
+    @Override
+    public Move select_move(Board board) {
+        return select_move(board, 300000); // Default to 5 minutes if no time specified
+    }
 }

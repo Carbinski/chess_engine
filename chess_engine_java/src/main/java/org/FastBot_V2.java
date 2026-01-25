@@ -19,6 +19,10 @@ public class FastBot_V2 implements JavaChessBot {
     int positions_eval = 0;
     long total_time = 0;
 
+    private long stop_time;
+    private boolean abort_search;
+    private int nodes_searched = 0;
+
     private static final int IDX_MAT = 0;
     private static final int IDX_MG = 1;
     private static final int IDX_EG = 2;
@@ -327,6 +331,15 @@ public class FastBot_V2 implements JavaChessBot {
     }
 
     private int search(int depth, int alpha, int beta, int mat, int mg, int eg) {
+        // Check if out of time
+        if ((nodes_searched++ & 4095) == 0) {
+            if (System.currentTimeMillis() > stop_time) {
+                abort_search = true;
+            }
+        }
+
+        if (abort_search) return 0;
+
         long zobrist_key = board.getZobristKey();
 
         TranspositionTable.TTEntry entry = tt.probe(zobrist_key);
@@ -404,11 +417,17 @@ public class FastBot_V2 implements JavaChessBot {
     }
 
     @Override
-    public Move select_move(Board board) {
-        long start_time = 0;
+    public Move select_move(Board board, long time_left) {
+        long start_time = System.currentTimeMillis();
+        long allocated_time = (time_left / 30) - 50;
+
+        this.stop_time = start_time + allocated_time;
+        this.abort_search = false;
+        this.nodes_searched = 0;
+        this.board = board;
+
         if (stat_tracking) {
             total_moves += 1;
-            start_time = System.currentTimeMillis();
         }
 
         List<Move> legal_moves = board.legalMoves();
@@ -428,10 +447,11 @@ public class FastBot_V2 implements JavaChessBot {
         int root_mg  = initial_scores[IDX_MG];
         int root_eg  = initial_scores[IDX_EG];
 
-        int global_best_score = -2000000;
         Move global_best_move = null;
 
         for (int curr_depth = 1; curr_depth <= this.depth; curr_depth++) {
+            if (this.abort_search) break;
+
             int iter_best_score = -2000000;
             Move iter_best_move = null;
             int alpha = -2000000;
@@ -445,16 +465,7 @@ public class FastBot_V2 implements JavaChessBot {
                 ordered_moves.add(0, global_best_move);
             }
 
-            // TODO: add time management
-            int time_limit = Integer.MAX_VALUE;
-            boolean time_abort = false;
-
             for (Move move : ordered_moves) {
-                if (System.currentTimeMillis() - start_time > time_limit) {
-                    time_abort = true;
-                    break;
-                }
-
                 delta_move(move);
                 this.board.doMove(move);
 
@@ -467,6 +478,8 @@ public class FastBot_V2 implements JavaChessBot {
 
                 this.board.undoMove();
 
+                if (this.abort_search) break;
+
                 if (score > iter_best_score) {
                     iter_best_score = score;
                     iter_best_move = move;
@@ -474,13 +487,12 @@ public class FastBot_V2 implements JavaChessBot {
                 alpha = Math.max(alpha, score);
             }
 
-            if (time_abort) {
+            if (!this.abort_search) {
+                global_best_move = iter_best_move;
+                System.out.println("Depth " + curr_depth + " completed. Best: " + global_best_move);
+            } else {
                 System.out.println("Time up! Aborting depth " + curr_depth);
-                break;
             }
-
-            global_best_move = iter_best_move;
-            global_best_score = iter_best_score;
         }
 
         if (stat_tracking) {
@@ -491,6 +503,11 @@ public class FastBot_V2 implements JavaChessBot {
 
         if (global_best_move != null) { return global_best_move;}
         return legal_moves.get(new Random().nextInt(legal_moves.size()));
+    }
+
+    @Override
+    public Move select_move(Board board) {
+        return select_move(board, 300000);
     }
 
     @Override

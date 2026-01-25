@@ -40,7 +40,7 @@ def get_python_move(fen: str, bot_id: str):
         depth = 5 # Default depth for FastBotV2
     elif bot_id == "python_midgame_v1":
         bot = MidGameBotV1()
-        depth = 4 # Default depth for MidGameBotV1
+        depth = 5 # Default depth for MidGameBotV1
     else: 
         # Default fallback
         bot = FastBotV4()
@@ -57,7 +57,7 @@ def get_python_move(fen: str, bot_id: str):
         
     return uci, end_time - start_time, depth
 
-def get_java_move(fen: str, bot_id: str):
+def get_java_move(fen: str, bot_id: str, time_limit: int = 5000):
     # Path to chess_engine_java
     java_project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../chess_engine_java"))
     classpath = f"{java_project_path}/libs/chesslib-1.3.3.jar:{java_project_path}/target/classes"
@@ -70,6 +70,8 @@ def get_java_move(fen: str, bot_id: str):
         java_bot_name = "FastBot_V2"
     elif bot_id == "java_bot_v2":
         java_bot_name = "Bot_V2"
+    elif bot_id == "java_time_bot":
+        java_bot_name = "TimeBot_V1"
 
     start_time = time.perf_counter()
     cmd = [
@@ -77,7 +79,8 @@ def get_java_move(fen: str, bot_id: str):
         "-cp", classpath,
         "org.OneShotBot",
         fen,
-        java_bot_name
+        java_bot_name,
+        str(time_limit)
     ]
     
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -91,14 +94,33 @@ def get_java_move(fen: str, bot_id: str):
          raise Exception("Java Bot produced no output")
     
     move_uci = None
+    max_depth = 0
+    
+    import re
+    depth_pattern = re.compile(r"Depth (\d+) completed")
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Check for depth info
+        match = depth_pattern.search(line)
+        if match:
+             d = int(match.group(1))
+             if d > max_depth: 
+                 max_depth = d
+                 
+    # Reverse loop to find the move (last valid UCI string)
     for line in reversed(lines):
         line = line.strip()
         # Simple check for UCI-like string (e.g. e2e4, a7a8q)
-        if 4 <= len(line) <= 5:
+        if 4 <= len(line) <= 5 and not "Depth" in line:
              move_uci = line
              break
              
     if not move_uci:
         move_uci = lines[-1] # Fallback
+        
+    if max_depth == 0:
+        max_depth = 5 # Fallback if parsing fails
 
-    return move_uci, end_time - start_time, 5 # Java bots usually run at depth 5 based on OneShotBot.java
+    return move_uci, end_time - start_time, max_depth

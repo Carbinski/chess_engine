@@ -12,6 +12,7 @@ public class OneShotBot {
 
         String fen = args[0];
         String botName = (args.length > 1) ? args[1] : "Bot_V2";
+        long timeLimit = (args.length > 2) ? Long.parseLong(args[2]) : 5000; // Default 5s
 
         try {
             Board board = new Board();
@@ -26,6 +27,10 @@ public class OneShotBot {
                 case "FastBot_V2":
                     bot = new Runner.JavaBotWrapper(new FastBot_V2(5, false, false), "FastBot_V2");
                     break;
+                case "TimeBot_V1":
+                    // Depth 64 (infinite essentially), tracking stats, random opening
+                    bot = new Runner.JavaBotWrapper(new TimeBot_V1(64, false, false), "TimeBot_V1");
+                    break;
                 case "Bot_V2":
                 default:
                     // Default to Bot_V2 with depth 5, stats=false, random=false
@@ -33,7 +38,7 @@ public class OneShotBot {
                     break;
             }
             
-            Move move = bot.select_move(board);
+            Move move = bot.select_move(board, timeLimit * 30);
             System.out.println(move.toString());
             
         } catch (Exception e) {

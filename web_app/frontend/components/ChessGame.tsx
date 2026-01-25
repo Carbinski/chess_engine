@@ -6,11 +6,13 @@ import { Chessboard } from "react-chessboard";
 
 export default function ChessGame() {
     const [game, setGame] = useState(new Chess());
-    const [botId, setBotId] = useState("python");
+    const [botId, setBotId] = useState("python_random");
     const [loading, setLoading] = useState(false);
     const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w');
     const [lastMove, setLastMove] = useState<{ from: string, to: string } | null>(null);
     const [botStats, setBotStats] = useState<{ time: number, depth: number } | null>(null);
+
+    const [timeLimit, setTimeLimit] = useState(5000);
 
     async function makeBotMove(currentFen: string) {
         setLoading(true);
@@ -18,7 +20,7 @@ export default function ChessGame() {
             const response = await fetch("http://127.0.0.1:8000/move", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ fen: currentFen, botId }),
+                body: JSON.stringify({ fen: currentFen, botId, timeLimit }),
             });
 
             if (!response.ok) {
@@ -129,8 +131,27 @@ export default function ChessGame() {
                         <option value="java_basic_v3">Java: BasicBot_V3</option>
                         <option value="java_fast_v2">Java: FastBot_V2</option>
                         <option value="java_bot_v2">Java: Bot_V2</option>
+                        <option value="java_time_bot">Java: TimeBot V1</option>
                     </select>
                 </div>
+
+                {botId === "java_time_bot" && (
+                    <div className="flex flex-col items-start">
+                        <label className="font-bold text-white text-sm mb-1">Time Limit:</label>
+                        <select
+                            value={timeLimit}
+                            onChange={(e) => setTimeLimit(Number(e.target.value))}
+                            className="p-2 rounded bg-gray-800 text-white border border-gray-600"
+                        >
+                            <option value={1000}>1 Second</option>
+                            <option value={3000}>3 Seconds</option>
+                            <option value={5000}>5 Seconds</option>
+                            <option value={10000}>10 Seconds</option>
+                            <option value={30000}>30 Seconds</option>
+                            <option value={60000}>60 Seconds</option>
+                        </select>
+                    </div>
+                )}
 
                 <div className="flex flex-col items-start">
                     <label className="font-bold text-white text-sm mb-1">Play As:</label>

@@ -17,6 +17,7 @@ app.add_middleware(
 class MoveRequest(BaseModel):
     fen: str
     botId: str
+    timeLimit: int = 5000 # Default 5 seconds
 
 @app.post("/move")
 def get_move(req: MoveRequest):
@@ -26,12 +27,12 @@ def get_move(req: MoveRequest):
         if req.botId.startswith("python"):
             move, time_taken, depth = get_python_move(req.fen, req.botId)
         elif req.botId.startswith("java"):
-            move, time_taken, depth = get_java_move(req.fen, req.botId)
+            move, time_taken, depth = get_java_move(req.fen, req.botId, req.timeLimit)
         # Backward compatibility
         elif req.botId == "python":
              move, time_taken, depth = get_python_move(req.fen, "python_fast_v4")
         elif req.botId == "java":
-             move, time_taken, depth = get_java_move(req.fen, "java_bot_v2")
+             move, time_taken, depth = get_java_move(req.fen, "java_bot_v2", req.timeLimit)
         else:
             raise HTTPException(status_code=400, detail=f"Invalid botId: {req.botId}")
 
@@ -59,5 +60,6 @@ def list_bots():
             {"id": "java_basic_v3", "name": "Java: BasicBot_V3"},
             {"id": "java_fast_v2", "name": "Java: FastBot_V2"},
             {"id": "java_bot_v2", "name": "Java: Bot_V2"},
+            {"id": "java_time_bot", "name": "Java: TimeBot_V1 (Time Controls)"},
         ]
     }
