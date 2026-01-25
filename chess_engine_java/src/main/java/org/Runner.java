@@ -242,7 +242,9 @@ public class Runner {
         ChessBot javaBotV4 = new JavaBotWrapper(new FastBot_V1(5, true, true), "JavaV4");
         ChessBot javaBotV5 = new JavaBotWrapper(new FastBot_V2(5, true, true), "JavaV5");
         ChessBot javaBotV6 = new JavaBotWrapper(new Bot_V1(5, true, true), "JavaV6");
-        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(5, true, true), "JavaV7");
+        ChessBot javaBotV7 = new JavaBotWrapper(new Bot_V2(6, true, true), "JavaV7");
+        ChessBot javaBotV8 = new JavaBotWrapper(new Bot_V3(6, true, true), "JavaV8");
+        ChessBot javaBotV9 = new JavaBotWrapper(new Bot_V4(6, true, true), "JavaV9");
 
 
         // Mode A: Java vs Java
@@ -262,9 +264,9 @@ public class Runner {
 
         // FastBot_V2 (Depth 8) - 4185 ms
 //
-        playTournament(javaBotV6, javaBotV7, 10);
-        System.out.println(javaBotV6.getStats());
-        System.out.println(javaBotV7.getStats());
+        playTournament(javaBotV9, javaBotV8, 10);
+        System.out.println(javaBotV8.getStats());
+        System.out.println(javaBotV9.getStats());
 
         // Mode B: Human vs Java
 //        playHumanVsBot(false, javaBotV5, "human_vs_java.html");

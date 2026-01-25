@@ -9,11 +9,10 @@ import java.util.Random;
 import support.TranspositionTable;
 
 /**
- * Bot_V2 : A lot of marginal improvements on speed
+ * Bot_V3 : Killer Moves
  * New Features:
- * 1. Buffers --> Limit Garbage Collector usage
- * 2. Enhanced Delta Move --> Slightly faster
- * 3. Added En-Passant to LVA-MVV
+ * Added Killer Move feature which should speed up tree search
+ * Also added annotations
  */
 public class Bot_V3 implements JavaChessBot {
     Board board;
@@ -35,6 +34,7 @@ public class Bot_V3 implements JavaChessBot {
     private final int[][] sort_buffers = new int[MAX_DEPTH][256]; // Assumes Max Depth of 64 and max 256 moves per position
 
     private Move[][] killer_moves = new Move[MAX_DEPTH][2];
+
     TranspositionTable tt = new TranspositionTable(2000000);
 
     int[] mg_pawn_table   = {0,0,0,0,0,0,0,0,-35,-1,-20,-23,-15,24,38,-22,-26,-4,-4,-10,3,3,33,-12,-27,-2,-5,12,17,6,10,-25,-14,13,6,21,23,12,17,-23,-6,7,26,31,65,56,25,-20,98,134,61,95,68,126,34,-11,0,0,0,0,0,0,0,0};
@@ -276,9 +276,9 @@ public class Bot_V3 implements JavaChessBot {
     }
 
     /**
-     * LVA-MVV
+     * Orders moves based on LVA-MVV
      * @param moves - unordered list of moves
-     * @return Ordered moves based on LVA-MVV. Index 0: Captures, Index 1: Quiet Moves
+     * @return Ordered moves based on LVA-MVV. Index 0: Captures, Index 1: Killer Moves, Index 2: Quiet Moves
      */
     private List<Move> order_moves(List<Move> moves, int ply) {
         int n = moves.size();
@@ -295,12 +295,16 @@ public class Bot_V3 implements JavaChessBot {
             Piece attacker = board.getPiece(move.getFrom());
 
             if (victim != Piece.NONE) {
-                score = (10 * piece_values[victim.getPieceType().ordinal() + 1]
+                score = 100000 + (10 * piece_values[victim.getPieceType().ordinal() + 1]
                         - piece_values[attacker.getPieceType().ordinal() + 1]);
             } else if (attacker.getPieceType() == PieceType.PAWN &&
                     move.getFrom().getFile() != move.getTo().getFile()) {
-                score = (10 * piece_values[PieceType.PAWN.ordinal() + 1])
+                score = 100000 + (10 * piece_values[PieceType.PAWN.ordinal() + 1])
                         - piece_values[PieceType.PAWN.ordinal() + 1];
+            } else if (move.equals(killer_moves[ply][0])) { // Score Killer Moves above Quiet, behind Captures
+                score = 90000;
+            } else if (move.equals(killer_moves[ply][1])) {
+                score = 80000;
             }
             capture_scores[i] = score;
         }
@@ -328,12 +332,28 @@ public class Bot_V3 implements JavaChessBot {
         return moves;
     }
 
+    /**
+     * Updates killer_moves buffer to remove most old killer move and add passed in killer move at specific ply
+     * the move should be a Non-Capture
+     *
+     * @param ply - the current turn
+     * @param move - the killer move
+     */
+    private void store_killer(int ply, Move move) {
+        if (ply >= 64) return;
+
+        if (move.equals(killer_moves[ply][0])) return;
+
+        killer_moves[ply][1] = killer_moves[ply][0];
+        killer_moves[ply][0] = move;
+    }
+
     private int quiesence_search(int alpha, int beta, int mat, int mg, int eg, int ply) {
         int stand_pat = get_final_score(mat, mg, eg); // Stand Pat: No capture
         if (stand_pat >= beta) return beta;
         if (alpha < stand_pat) alpha = stand_pat;
 
-        List<Move> capture_moves = order_moves(board.pseudoLegalCaptures(), ply + 1);
+        List<Move> capture_moves = order_moves(board.pseudoLegalCaptures(), ply);
 
         for (Move move: capture_moves) {
             delta_move(move);
@@ -358,11 +378,18 @@ public class Bot_V3 implements JavaChessBot {
     }
 
     private int search(int depth, int alpha, int beta, int mat, int mg, int eg, int ply) {
-        long zobrist_key = board.getZobristKey();
 
+        // Check Transposition Table to see if we can skip the search
+        /*
+        If this position has been searched before at a depth >= the current depth, then we re-use the evaluation
+        There are three cases
+        1. (tt_flag == 0) We know position eval; return eval
+        2. (tt_flag == 1 ...) Beta cutoff
+        3. (tt_flag == 2 ...) Alpha cutoff
+         */
+        long zobrist_key = board.getZobristKey();
         TranspositionTable.TTEntry entry = tt.probe(zobrist_key);
         int tt_move_id = -1;
-
         if (entry != null) {
             int tt_depth = entry.depth();
             int tt_score = entry.score();
@@ -379,6 +406,7 @@ public class Bot_V3 implements JavaChessBot {
 
         if (depth <= 0) return quiesence_search(alpha, beta, mat, mg, eg, ply);
 
+        // Check Mate / Draw
         List<Move> moves = board.legalMoves();
         if (moves == null || moves.isEmpty()) {
             if (board.isMated()) return -1000000 - depth;
@@ -387,6 +415,7 @@ public class Bot_V3 implements JavaChessBot {
 
         List<Move> ordered_moves = order_moves(moves, ply);
 
+        // Update move list to check previous best move first
         if (tt_move_id != -1) {
             for (int i = 0; i < ordered_moves.size(); i++) {
                 Move m = ordered_moves.get(i);
@@ -397,6 +426,7 @@ public class Bot_V3 implements JavaChessBot {
                 }
             }
         }
+
 
         int max_score = -2000000;
         Move best_move = null;
@@ -421,6 +451,9 @@ public class Bot_V3 implements JavaChessBot {
 
             alpha = Math.max(alpha, score);
             if (alpha >= beta) {
+                if ((board.getBitboard() & move.getTo().getBitboard()) == 0) {
+                    store_killer(ply, move);
+                }
                 break;
             }
         }

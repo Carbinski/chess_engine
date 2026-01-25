@@ -22,12 +22,18 @@ class MoveRequest(BaseModel):
 def get_move(req: MoveRequest):
     try:
         print(f"Received request: {req}")
-        if req.botId == "python":
-            move, time_taken, depth = get_python_move(req.fen)
+        
+        if req.botId.startswith("python"):
+            move, time_taken, depth = get_python_move(req.fen, req.botId)
+        elif req.botId.startswith("java"):
+            move, time_taken, depth = get_java_move(req.fen, req.botId)
+        # Backward compatibility
+        elif req.botId == "python":
+             move, time_taken, depth = get_python_move(req.fen, "python_fast_v4")
         elif req.botId == "java":
-            move, time_taken, depth = get_java_move(req.fen)
+             move, time_taken, depth = get_java_move(req.fen, "java_bot_v2")
         else:
-            raise HTTPException(status_code=400, detail="Invalid botId")
+            raise HTTPException(status_code=400, detail=f"Invalid botId: {req.botId}")
 
         if move is None:
              print("No move returned (Game Over or No Move)")
@@ -44,7 +50,14 @@ def get_move(req: MoveRequest):
 def list_bots():
     return {
         "bots": [
-            {"id": "python", "name": "Python Bot (FastV4)"},
-            {"id": "java", "name": "Java Bot (BotV2)"}
+            {"id": "python_random", "name": "Python: Random"},
+            {"id": "python_aggressive", "name": "Python: Aggressive"},
+            {"id": "python_dumb_eval", "name": "Python: DumbEval"},
+            {"id": "python_basic_search", "name": "Python: Basic Search"},
+            {"id": "python_fast_v2", "name": "Python: FastBotV2"},
+            {"id": "python_midgame_v1", "name": "Python: MidGameBotV1"},
+            {"id": "java_basic_v3", "name": "Java: BasicBot_V3"},
+            {"id": "java_fast_v2", "name": "Java: FastBot_V2"},
+            {"id": "java_bot_v2", "name": "Java: Bot_V2"},
         ]
     }

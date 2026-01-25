@@ -3,37 +3,81 @@ import os
 import subprocess
 import time
 import chess
+import random
 
 # Add root directory to path so we can import bots
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+from bots.random_algo import RandomBot
+from bots.aggressive_algo import AggressiveBot
+from bots.dumb_eval_algo import DumbEvalBot
+from bots.basic_search_algo import BasicSearchBot
+from bots.fast_search_v2 import FastBotV2
 from bots.fast_search_v4 import FastBotV4
+from bots.midgame_v1 import MidGameBotV1
 
-def get_python_move(fen: str):
+def get_python_move(fen: str, bot_id: str):
     board = chess.Board(fen)
     if board.is_game_over():
         return None, 0, 0
     
     start_time = time.perf_counter()
-    bot = FastBotV4() 
-    # FastBotV4 likely has same interface as others: select_move(board)
-    # FastBotV4 has a search depth of 4 by default in __init__
+    
+    bot = None
+    depth = 0
+    
+    if bot_id == "python_random":
+        bot = RandomBot()
+    elif bot_id == "python_aggressive":
+        bot = AggressiveBot()
+    elif bot_id == "python_dumb_eval":
+        bot = DumbEvalBot()
+    elif bot_id == "python_basic_search":
+        bot = BasicSearchBot()
+        depth = 3 # Default depth for BasicSearchBot
+    elif bot_id == "python_fast_v2":
+        bot = FastBotV2()
+        depth = 5 # Default depth for FastBotV2
+    elif bot_id == "python_midgame_v1":
+        bot = MidGameBotV1()
+        depth = 4 # Default depth for MidGameBotV1
+    else: 
+        # Default fallback
+        bot = FastBotV4()
+        depth = 4
+
     move = bot.select_move(board)
     end_time = time.perf_counter()
     
-    return move.uci(), end_time - start_time, bot.depth
+    # Some bots might return a string or object, ensure we get UCI
+    if hasattr(move, 'uci'):
+        uci = move.uci()
+    else:
+        uci = str(move)
+        
+    return uci, end_time - start_time, depth
 
-def get_java_move(fen: str):
+def get_java_move(fen: str, bot_id: str):
     # Path to chess_engine_java
     java_project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../chess_engine_java"))
     classpath = f"{java_project_path}/libs/chesslib-1.3.3.jar:{java_project_path}/target/classes"
     
+    # Map frontend bot_id to Java OneShotBot names
+    java_bot_name = "Bot_V2" # Default
+    if bot_id == "java_basic_v3":
+        java_bot_name = "BasicBot_V3"
+    elif bot_id == "java_fast_v2":
+        java_bot_name = "FastBot_V2"
+    elif bot_id == "java_bot_v2":
+        java_bot_name = "Bot_V2"
+
     start_time = time.perf_counter()
     cmd = [
         "java",
         "-cp", classpath,
         "org.OneShotBot",
-        fen
+        fen,
+        java_bot_name
     ]
     
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -57,6 +101,4 @@ def get_java_move(fen: str):
     if not move_uci:
         move_uci = lines[-1] # Fallback
 
-    # Java Bot depth is hardcoded or unknown from this wrapper, let's assume 4 for now or 0 if unknown
-    # Based on previous context, BotV2 might be depth 4 as well.
-    return move_uci, end_time - start_time, 4
+    return move_uci, end_time - start_time, 5 # Java bots usually run at depth 5 based on OneShotBot.java

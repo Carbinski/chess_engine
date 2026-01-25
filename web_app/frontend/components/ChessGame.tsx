@@ -120,8 +120,15 @@ export default function ChessGame() {
                         onChange={(e) => setBotId(e.target.value)}
                         className="p-2 rounded bg-gray-800 text-white border border-gray-600"
                     >
-                        <option value="python">Python Bot (FastV4)</option>
-                        <option value="java">Java Bot (BotV2)</option>
+                        <option value="python_random">Python: Random</option>
+                        <option value="python_aggressive">Python: Aggressive</option>
+                        <option value="python_dumb_eval">Python: DumbEval</option>
+                        <option value="python_basic_search">Python: Basic Search</option>
+                        <option value="python_fast_v2">Python: FastBotV2</option>
+                        <option value="python_midgame_v1">Python: MidGameBotV1</option>
+                        <option value="java_basic_v3">Java: BasicBot_V3</option>
+                        <option value="java_fast_v2">Java: FastBot_V2</option>
+                        <option value="java_bot_v2">Java: Bot_V2</option>
                     </select>
                 </div>
 
