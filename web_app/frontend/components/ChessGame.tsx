@@ -31,7 +31,7 @@ export default function ChessGame() {
             const isWhiteTurn = game.turn() === 'w';
             const remainingTime = isWhiteTurn ? whiteTime : blackTime;
 
-            const response = await fetch("http://127.0.0.1:8000/move", {
+            const response = await fetch("/api/move", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

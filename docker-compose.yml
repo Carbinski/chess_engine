@@ -1,0 +1,36 @@
+services:
+  frontend:
+    build:
+      context: ./web_app/frontend
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - NODE_ENV=production
+    networks:
+      - chess_net
+
+  backend:
+    build:
+      context: .
+      dockerfile: web_app/backend/Dockerfile
+    restart: always
+    networks:
+      - chess_net
+    expose:
+      - "8000"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - chess_net
+
+networks:
+  chess_net:
+    driver: bridge

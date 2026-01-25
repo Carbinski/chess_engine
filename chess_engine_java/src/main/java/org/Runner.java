@@ -312,7 +312,7 @@ public class Runner {
 //
         // Mode A: TimeBot Test
         System.out.println("Starting TimeBot test vs JavaV1...");
-        playTournament(timeBot, javaBotV1, 2);
+        playTournament(timeBot, javaBotV9, 10);
         
         // playTournament(javaBotV9, javaBotV8, 10);
         // System.out.println(javaBotV8.getStats());

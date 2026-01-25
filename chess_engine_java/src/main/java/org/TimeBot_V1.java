@@ -580,7 +580,7 @@ public class TimeBot_V1 implements JavaChessBot {
 
             if (!this.abort_search) {
                 global_best_move = iter_best_move;
-                System.out.println("Depth " + curr_depth + " completed. Best: " + global_best_move);
+//                System.out.println("Depth " + curr_depth + " completed. Best: " + global_best_move);
             } else {
                 System.out.println("Aborted at depth " + curr_depth);
             }
