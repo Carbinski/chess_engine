@@ -222,8 +222,8 @@ public class Runner {
         Board board = new Board();
         int moves = 0;
 
-        long whiteTime = 60000;
-        long blackTime = 60000;
+        long whiteTime = 10000; // 60000
+        long blackTime = 10000;
 
         while (!board.isMated() && !board.isDraw() && moves < 200) {
             ChessBot currentBot = (board.getSideToMove() == Side.WHITE) ? white : black;
@@ -290,14 +290,15 @@ public class Runner {
         ChessBot javaBotV8 = new JavaBotWrapper(new Bot_V3(6, true, true), "JavaV8");
         ChessBot javaBotV9 = new JavaBotWrapper(new Bot_V4(6, true, true), "JavaV9");
         ChessBot timeBot = new JavaBotWrapper(new TimeBot_V1(64, true, true), "TimeBot");
+        ChessBot openingBot = new JavaBotWrapper(new OpeningBot_V1(64, true, true), "OpeningBot");
 
 
 
         // Mode A: Java vs Java
 //        playAndRenderGame(javaBotV7, javaBotV6, "java_vs_java.html");
-//        playAndRenderGame(javaBotV6, javaBotV7, "java_vs_java.html");
-//        System.out.println(javaBotV7.getStats());
-//        System.out.println(javaBotV6.getStats());
+//        playAndRenderGame(openingBot, timeBot, "java_vs_java.html");
+//        System.out.println(openingBot.getStats());
+//        System.out.println(timeBot.getStats());
         // Plugged In : Minimal Background Tasks
         // BasicBot_V1 (Depth 6) vs BasicBot_V1 (Depth 4) : 3220 ms per move (111)
         // BasicBot_V2 (Depth 6) vs BasicBot_V1 (Depth 4) : 3995 ms per move (54)
@@ -312,7 +313,7 @@ public class Runner {
 //
         // Mode A: TimeBot Test
         System.out.println("Starting TimeBot test vs JavaV1...");
-        playTournament(timeBot, javaBotV9, 10);
+        playTournament(timeBot, openingBot, 15);
         
         // playTournament(javaBotV9, javaBotV8, 10);
         // System.out.println(javaBotV8.getStats());
