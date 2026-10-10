@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+pypy-env/
+*.egg-info/
+
+# Java
+target/
+*.class
+
+# C++
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.o
+*.obj
+
+# Node
+node_modules/
+.next/
+out/
+
+# Editors and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Local env
+.env
+.env.*
+
+# Generated match reports
+chess_game.html
+game_report.html
+human_vs_java.html
+java_vs_java.html
