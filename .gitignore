@@ -18,6 +18,7 @@ CMakeCache.txt
 *.o
 *.obj
 engines/cpp/releases/
+/engine
 
 # Node
 node_modules/
@@ -39,3 +40,6 @@ chess_game.html
 game_report.html
 human_vs_java.html
 java_vs_java.html
+
+# Local fastchess run (machine paths and match stats)
+/config.json
