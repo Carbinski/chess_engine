@@ -38,18 +38,36 @@ A worktree builds the old tag without switching your current checkout.
 
 ### Binary contract
 
-Every frozen binary uses the same command line:
+Every frozen binary is a UCI engine. Fastchess starts the process and keeps it open. The engine reads commands on stdin and writes one response line at a time on stdout.
 
 ```text
-cpp-v1 <fen> <time_ms>
+uci
+id name Random
+id author chess_engine
+uciok
+
+isready
+readyok
+
+ucinewgame
+position startpos moves e2e4
+go wtime 10000 btime 10000
+bestmove e7e5
+
+quit
 ```
 
-It prints one UCI move on stdout (for example `e2e4` or `a7a8q`). Search, the board representation, and eval can change between tags. This command line stays fixed, so the web backend and match runner can launch any release the same way.
+`bestmove` is the last line of a `go` response. Search, the board representation, and eval can change between tags. This exchange stays fixed.
 
 ### Playing versions
 
-The local site can shell out to a path under `releases/`, the same way it already launches a Java bot with a FEN and a time limit.
+Build fastchess with `make -j` in `tools/fastchess`, then point it at the frozen binaries:
 
-For tournaments, teach the engine UCI and run the binaries with [cutechess-cli](https://github.com/cutechess/cutechess) or [fastchess](https://github.com/Disservin/fastchess). Those tools play engine binaries against each other, so `cpp-v1` vs `cpp-v3` does not need a custom match harness.
+```bash
+tools/fastchess/fastchess \
+  -engine cmd=engines/cpp/releases/cpp-v1 name=cpp-v1 \
+  -engine cmd=engines/cpp/releases/cpp-v2 name=cpp-v2 \
+  -each tc=10+0.1 -rounds 200 -repeat
+```
 
 If two versions differ only by eval weights or search parameters, a data file next to the binary is enough. When search or the board changes, freeze a new binary.
