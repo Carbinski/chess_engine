@@ -6,7 +6,7 @@ using namespace chess;
 
 RandomEngine::RandomEngine() : rng_(std::random_device{}()) {}
 
-Move RandomEngine::select_move(const Board& board) {
+Move RandomEngine::select_move(const Board& board, std::optional<int>) {
     Movelist moves;
     movegen::legalmoves(moves, board);
     if (moves.empty()) {

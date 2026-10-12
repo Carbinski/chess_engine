@@ -1,6 +1,7 @@
 #include "engine.hpp"
 
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -17,7 +18,7 @@ public:
 private:
     void send(std::string_view line) const;
     void set_position(const std::string& line);
-    void go();
+    void go(const std::string& line);
 
     Engine& engine_;
     Board board_;
@@ -63,8 +64,31 @@ void UciSession::set_position(const std::string& line) {
     }
 }
 
-void UciSession::go() {
-    const Move move = engine_.select_move(board_);
+void UciSession::go(const std::string& line) {
+    std::istringstream in(line);
+    std::string token;
+    in >> token;
+
+    std::optional<int> wtime;
+    std::optional<int> btime;
+    std::optional<int> movetime;
+    while (in >> token) {
+        int value = 0;
+        if (token == "wtime" && (in >> value)) {
+            wtime = value;
+        } else if (token == "btime" && (in >> value)) {
+            btime = value;
+        } else if (token == "movetime" && (in >> value)) {
+            movetime = value;
+        } else if (token == "winc" || token == "binc" || token == "movestogo" || token == "depth" ||
+                   token == "nodes" || token == "mate") {
+            in >> value;
+        }
+    }
+
+    const std::optional<int> time_remaining =
+        movetime ? movetime : (board_.sideToMove() == Color::WHITE ? wtime : btime);
+    const Move move = engine_.select_move(board_, time_remaining);
     if (move == Move::NO_MOVE) {
         send("bestmove 0000");
         return;
@@ -97,7 +121,7 @@ void UciSession::run() {
         } else if (command == "position") {
             set_position(line);
         } else if (command == "go") {
-            go();
+            go(line);
         } else if (command == "quit") {
             break;
         }
