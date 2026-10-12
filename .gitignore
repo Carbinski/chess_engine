@@ -17,6 +17,7 @@ CMakeFiles/
 CMakeCache.txt
 *.o
 *.obj
+engines/cpp/releases/
 
 # Node
 node_modules/

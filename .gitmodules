@@ -1,0 +1,6 @@
+[submodule "engines/cpp/chess-library"]
+	path = engines/cpp/chess-library
+	url = https://github.com/Disservin/chess-library.git
+[submodule "tools/fastchess"]
+	path = tools/fastchess
+	url = https://github.com/Disservin/fastchess.git
