@@ -129,7 +129,7 @@ void UciSession::run() {
 }
 
 int main() {
-    RandomEngine engine;
+    EvalEngine engine;
     UciSession session(engine);
     session.run();
 }
