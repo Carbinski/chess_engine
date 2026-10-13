@@ -129,7 +129,7 @@ void UciSession::run() {
 }
 
 int main() {
-    EvalEngine engine;
+    SearchEngine engine;
     UciSession session(engine);
     session.run();
 }

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "chess.hpp"
+#include "search.hpp"
 
 #include <optional>
-#include <random>
 #include <string_view>
 
 // Picks a move. The UCI session talks to this, not to a particular search.
@@ -15,13 +15,13 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class EvalEngine : public Engine {
+class SearchEngine : public Engine {
 public:
-    EvalEngine();
+    SearchEngine();
 
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 
 private:
-    std::mt19937 rng_;
+    BasicSearch search_;
 };
