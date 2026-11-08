@@ -18,7 +18,6 @@ From the repo root, with a clean tree:
 git tag cpp-v1
 cmake -S engines/cpp -B engines/cpp/build -DCMAKE_BUILD_TYPE=Release
 cmake --build engines/cpp/build
-mkdir -p engines/cpp/releases
 cp engines/cpp/build/chess_engine engines/cpp/releases/cpp-v1
 ```
 
