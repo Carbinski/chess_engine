@@ -242,7 +242,7 @@ Logger::~Logger() {
 
 void Logger::open_trace() {
     constexpr std::string_view header =
-        "# engine game move_number side depth nodes nps elapsed_ms budget_ms full_budget score move fen\n";
+        "engine\tgame\tmove_number\tside\tdepth\tnodes\tnps\telapsed_ms\tbudget_ms\tfull_budget\tscore\tmove\tfen\n";
     trace_.open(trace_path_, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!trace_) {
         std::cerr << "could not open " << trace_path_.string() << ": " << errno_message() << '\n';

@@ -44,3 +44,4 @@ java_vs_java.html
 
 # Local fastchess run (machine paths and match stats)
 /config.json
+/books*
