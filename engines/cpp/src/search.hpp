@@ -15,15 +15,14 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class BasicSearch : public Search {
+class TreeSearch : public Search {
 public:
-    BasicSearch();
-
+    TreeSearch();
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 
 private:
-    int search(chess::Board& board, int depth);
+    int search(chess::Board& board, int depth, int alpha, int beta);
     bool check_time_expired();
 
     std::chrono::steady_clock::time_point start_{};

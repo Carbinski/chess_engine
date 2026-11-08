@@ -15,7 +15,7 @@ void log_completed_search(std::string_view engine_name,
                           std::uint64_t nodes,
                           int budget_ms,
                           bool full_budget,
-                          std::optional<int> committed_score,
+                          std::optional<int> committed_eval,
                           const Move& move,
                           std::chrono::steady_clock::time_point search_start) {
     try {
@@ -26,7 +26,7 @@ void log_completed_search(std::string_view engine_name,
         stats.nodes = nodes;
         stats.budget_ms = budget_ms;
         stats.full_budget = full_budget;
-        stats.score = committed_score;
+        stats.score = committed_eval;
         stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                std::chrono::steady_clock::now() - search_start)
                                .count();
@@ -46,16 +46,16 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-bool score_is_better(bool white_to_move, int score, int best_score) {
+bool eval_is_better(bool white_to_move, int eval, int best_eval) {
     if (white_to_move) {
-        return score > best_score;
+        return eval > best_eval;
     }
-    return score < best_score;
+    return eval < best_eval;
 }
 
-BasicSearch::BasicSearch() {}
+TreeSearch::TreeSearch() {}
 
-bool BasicSearch::check_time_expired() {
+bool TreeSearch::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
@@ -67,7 +67,7 @@ bool BasicSearch::check_time_expired() {
     return out_of_time_;
 }
 
-chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move TreeSearch::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -77,13 +77,15 @@ chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<in
     movegen::legalmoves(moves, board);
 
     Move best_move = Move::NO_MOVE;
-    std::optional<int> committed_score;
+    std::optional<int> committed_eval;
     int depth_completed = 0;
     if (!moves.empty()) {
         best_move = moves[0];
         const bool white_to_move = board.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
-            int best_score = white_to_move ? -1'000'000 : 1'000'000;
+            int best_eval = white_to_move ? -1'000'000 : 1'000'000;
+            int alpha = -1'000'000;
+            int beta = 1'000'000;
             Move iteration_best = best_move;
 
             for (const auto& move : moves) {
@@ -93,13 +95,19 @@ chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<in
 
                 Board position = board;
                 position.makeMove(move);
-                const int score = search(position, depth - 1);
+                const int eval = search(position, depth - 1, alpha, beta);
                 if (out_of_time_) {
                     break;
                 }
-                if (score_is_better(white_to_move, score, best_score)) {
-                    best_score = score;
+                if (eval_is_better(white_to_move, eval, best_eval)) {
+                    best_eval = eval;
                     iteration_best = move;
+                    if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
+                        (white_to_move ? alpha : beta) = eval;
+                        if (beta <= alpha) {
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -107,7 +115,7 @@ chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<in
                 break;
             }
             best_move = iteration_best;
-            committed_score = best_score;
+            committed_eval = best_eval;
             depth_completed = depth;
 
             if (check_time_expired()) {
@@ -117,12 +125,12 @@ chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<in
     }
 
     const bool full_budget = out_of_time_;
-    log_completed_search(name(), board, depth_completed, nodes_, budget_ms_, full_budget, committed_score,
+    log_completed_search(name(), board, depth_completed, nodes_, budget_ms_, full_budget, committed_eval,
                          best_move, start_);
     return best_move;
 }
 
-int BasicSearch::search(chess::Board& board, int depth) {
+int TreeSearch::search(chess::Board& board, int depth, int alpha, int beta) {
     ++nodes_;
     if (check_time_expired()) {
         return 0;
@@ -140,24 +148,30 @@ int BasicSearch::search(chess::Board& board, int depth) {
     }
 
     const bool white_to_move = board.sideToMove() == Color::WHITE;
-    int best_score = white_to_move ? -1'000'000 : 1'000'000;
+    int best_eval = white_to_move ? -1'000'000 : 1'000'000;
 
     for (const auto& move : moves) {
         position.makeMove(move);
-        int score = search(position, depth - 1);
+        int eval = search(position, depth - 1, alpha, beta);
         position.unmakeMove(move);
         if (out_of_time_) {
             return 0;
         }
 
-        if (score_is_better(white_to_move, score, best_score)) {
-            best_score = score;
+        if (eval_is_better(white_to_move, eval, best_eval)) {
+            best_eval = eval;
+            if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
+                (white_to_move ? alpha : beta) = eval;
+                if (beta <= alpha) {
+                    break;
+                }
+            }
         }
     }
 
-    return best_score;
+    return best_eval;
 }
 
-std::string_view BasicSearch::name() const {
-    return "BasicSearch";
+std::string_view TreeSearch::name() const {
+    return "TreeSearch";
 }

@@ -23,5 +23,5 @@ public:
     std::string_view name() const override;
 
 private:
-    BasicSearch search_;
+    TreeSearch search_;
 };
