@@ -9,6 +9,7 @@ add_executable(chess_engine
     src/engine.cpp
     src/search.cpp
     src/evaluate.cpp
+    src/logging.cpp
 )
 
 target_include_directories(chess_engine PRIVATE

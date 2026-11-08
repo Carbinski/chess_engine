@@ -2,6 +2,7 @@
 
 #include "chess.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
 #include <chrono>
@@ -28,4 +29,5 @@ private:
     std::chrono::steady_clock::time_point start_{};
     int budget_ms_ = 0;
     bool out_of_time_ = false;
+    std::uint64_t nodes_ = 0;
 };

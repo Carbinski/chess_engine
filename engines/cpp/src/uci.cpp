@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "logging.hpp"
 
 #include <iostream>
 #include <optional>
@@ -118,11 +119,13 @@ void UciSession::run() {
             send("readyok");
         } else if (command == "ucinewgame") {
             board_.setFen(constants::STARTPOS);
+            logging::begin_game();
         } else if (command == "position") {
             set_position(line);
         } else if (command == "go") {
             go(line);
         } else if (command == "quit") {
+            logging::flush();
             break;
         }
     }

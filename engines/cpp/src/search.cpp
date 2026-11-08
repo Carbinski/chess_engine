@@ -1,7 +1,50 @@
 #include "search.hpp"
 #include "evaluate.hpp"
+#include "logging.hpp"
+
+#include <exception>
+#include <iostream>
 
 using namespace chess;
+
+namespace {
+
+void log_completed_search(std::string_view engine_name,
+                          const Board& board,
+                          int depth_completed,
+                          std::uint64_t nodes,
+                          int budget_ms,
+                          bool full_budget,
+                          std::optional<int> committed_score,
+                          const Move& move,
+                          std::chrono::steady_clock::time_point search_start) {
+    try {
+        logging::SearchStats stats;
+        stats.engine = std::string(engine_name);
+        stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
+        stats.depth = depth_completed;
+        stats.nodes = nodes;
+        stats.budget_ms = budget_ms;
+        stats.full_budget = full_budget;
+        stats.score = committed_score;
+        stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                               std::chrono::steady_clock::now() - search_start)
+                               .count();
+        if (move != Move::NO_MOVE) {
+            stats.move = uci::moveToUci(move);
+        }
+        if (logging::should_include_fen()) {
+            stats.fen = board.getFen();
+        }
+        logging::log_search(std::move(stats));
+    } catch (const std::exception& ex) {
+        std::cerr << "logging failed: " << ex.what() << '\n';
+    } catch (...) {
+        std::cerr << "logging failed\n";
+    }
+}
+
+}
 
 bool score_is_better(bool white_to_move, int score, int best_score) {
     if (white_to_move) {
@@ -28,50 +71,59 @@ chess::Move BasicSearch::select_move(const chess::Board& board, std::optional<in
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
+    nodes_ = 1;  // root; search() counts every position below it
 
     Movelist moves;
     movegen::legalmoves(moves, board);
-    if (moves.empty()) {
-        return chess::Move::NO_MOVE;
-    }
 
-    Move best_move = moves[0];
-    const bool white_to_move = board.sideToMove() == Color::WHITE;
-    for (int depth = 1; ; ++depth) {
-        int best_score = white_to_move ? -1'000'000 : 1'000'000;
-        Move iteration_best = best_move;
+    Move best_move = Move::NO_MOVE;
+    std::optional<int> committed_score;
+    int depth_completed = 0;
+    if (!moves.empty()) {
+        best_move = moves[0];
+        const bool white_to_move = board.sideToMove() == Color::WHITE;
+        for (int depth = 1; ; ++depth) {
+            int best_score = white_to_move ? -1'000'000 : 1'000'000;
+            Move iteration_best = best_move;
 
-        for (const auto& move : moves) {
-            if (check_time_expired()) {
-                break;
+            for (const auto& move : moves) {
+                if (check_time_expired()) {
+                    break;
+                }
+
+                Board position = board;
+                position.makeMove(move);
+                const int score = search(position, depth - 1);
+                if (out_of_time_) {
+                    break;
+                }
+                if (score_is_better(white_to_move, score, best_score)) {
+                    best_score = score;
+                    iteration_best = move;
+                }
             }
 
-            Board position = board;
-            position.makeMove(move);
-            const int score = search(position, depth - 1);
             if (out_of_time_) {
                 break;
             }
-            if (score_is_better(white_to_move, score, best_score)) {
-                best_score = score;
-                iteration_best = move;
+            best_move = iteration_best;
+            committed_score = best_score;
+            depth_completed = depth;
+
+            if (check_time_expired()) {
+                break;
             }
-        }
-
-        if (out_of_time_) {
-            break;
-        }
-        best_move = iteration_best;
-
-        if (check_time_expired()) {
-            break;
         }
     }
 
+    const bool full_budget = out_of_time_;
+    log_completed_search(name(), board, depth_completed, nodes_, budget_ms_, full_budget, committed_score,
+                         best_move, start_);
     return best_move;
 }
 
 int BasicSearch::search(chess::Board& board, int depth) {
+    ++nodes_;
     if (check_time_expired()) {
         return 0;
     }

@@ -19,6 +19,7 @@ CMakeCache.txt
 *.obj
 engines/cpp/releases/
 /engine
+logs/
 
 # Node
 node_modules/
