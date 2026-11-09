@@ -1,6 +1,7 @@
 #include "search.hpp"
 #include "evaluate.hpp"
 #include "logging.hpp"
+#include "move_ordering.hpp"
 
 #include <algorithm>
 #include <exception>
@@ -20,30 +21,24 @@ void log_completed_search(std::string_view engine_name,
                           std::optional<int> committed_eval,
                           const Move& move,
                           std::chrono::steady_clock::time_point search_start) {
-    try {
-        logging::SearchStats stats;
-        stats.engine = std::string(engine_name);
-        stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
-        stats.depth = depth_completed;
-        stats.nodes = nodes;
-        stats.budget_ms = budget_ms;
-        stats.full_budget = full_budget;
-        stats.score = committed_eval;
-        stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                               std::chrono::steady_clock::now() - search_start)
-                               .count();
-        if (move != Move::NO_MOVE) {
-            stats.move = uci::moveToUci(move);
-        }
-        if (logging::should_include_fen()) {
-            stats.fen = board.getFen();
-        }
-        logging::log_search(std::move(stats));
-    } catch (const std::exception& ex) {
-        std::cerr << "logging failed: " << ex.what() << '\n';
-    } catch (...) {
-        std::cerr << "logging failed\n";
+    logging::SearchStats stats;
+    stats.engine = std::string(engine_name);
+    stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
+    stats.depth = depth_completed;
+    stats.nodes = nodes;
+    stats.budget_ms = budget_ms;
+    stats.full_budget = full_budget;
+    stats.score = committed_eval;
+    stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - search_start)
+                        .count();
+    if (move != Move::NO_MOVE) {
+        stats.move = uci::moveToUci(move);
     }
+    if (logging::should_include_fen()) {
+        stats.fen = board.getFen();
+    }
+    logging::log_search(std::move(stats));
 }
 
 }
@@ -85,6 +80,8 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
         best_move = moves[0];
         const bool white_to_move = board.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
+            MoveOrdering{}.order_moves(moves, best_move);
+
             int best_eval = white_to_move ? -1'000'000 : 1'000'000;
             int alpha = -1'000'000;
             int beta = 1'000'000;
@@ -142,7 +139,9 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     }
 
     const std::uint64_t hash = board.hash();
+    Move hash_move = Move::NO_MOVE;
     if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
+        hash_move = entry->best;
         if (entry->depth >= depth) {
             if (entry->flag == Bound::Exact) return entry->score;
             if (entry->flag == Bound::Lower) alpha = std::max(entry->score, alpha);
@@ -156,11 +155,13 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     if (moves.empty()) {
         return evaluate(board);
     }
+    MoveOrdering{}.order_moves(moves, hash_move);
 
     const int original_alpha = alpha;
     const int original_beta = beta;
     const bool white_to_move = board.sideToMove() == Color::WHITE;
     int best_eval = white_to_move ? -1'000'000 : 1'000'000;
+    Move best_move = Move::NO_MOVE;
     Board position = board;
 
     for (const auto& move : moves) {
@@ -173,6 +174,7 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
 
         if (eval_is_better(white_to_move, eval, best_eval)) {
             best_eval = eval;
+            best_move = move;
             if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
                 (white_to_move ? alpha : beta) = eval;
                 if (beta <= alpha) {
@@ -188,7 +190,7 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     } else if (best_eval >= original_beta) {
         bound = Bound::Lower;
     }
-    transposition_table_.store_position(Entry{hash, depth, best_eval, bound, Move::NO_MOVE});
+    transposition_table_.store_position(Entry{hash, depth, best_eval, bound, best_move});
     return best_eval;
 }
 

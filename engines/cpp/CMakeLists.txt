@@ -11,6 +11,7 @@ add_executable(chess_engine
     src/evaluate.cpp
     src/logging.cpp
     src/transposition.cpp
+    src/move_ordering.cpp
 )
 
 target_include_directories(chess_engine PRIVATE
