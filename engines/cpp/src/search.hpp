@@ -16,9 +16,9 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class Cantrip : public Search {
+class Dumbledore : public Search {
 public:
-    Cantrip();
+    Dumbledore();
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 

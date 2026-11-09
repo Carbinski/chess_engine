@@ -59,9 +59,9 @@ bool eval_is_better(bool white_to_move, int eval, int best_eval) {
     return eval < best_eval;
 }
 
-Cantrip::Cantrip() {}
+Dumbledore::Dumbledore() {}
 
-bool Cantrip::check_time_expired() {
+bool Dumbledore::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
@@ -73,7 +73,7 @@ bool Cantrip::check_time_expired() {
     return out_of_time_;
 }
 
-chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Dumbledore::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -148,7 +148,7 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
     return best_move;
 }
 
-int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
+int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
     ++nodes_;
     if (check_time_expired()) {
         return 0;
@@ -227,6 +227,6 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     return best_eval;
 }
 
-std::string_view Cantrip::name() const {
-    return "Cantrip";
+std::string_view Dumbledore::name() const {
+    return "Dumbledore";
 }
