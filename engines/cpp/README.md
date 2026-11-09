@@ -8,7 +8,40 @@ Edit `src/` in place. Git history is the record of how the engine changed. When 
 
 `releases/` is gitignored. The tag is the source of truth. The binary is a cache you can rebuild from the tag.
 
-Name the tag and the binary the same way: `cpp-v1`, `cpp-v2`, and so on.
+### Naming
+
+Each major version gets a magic-themed name, and the first letter continues in alphabetical order. The number after `-v` is the subversion, so `cantrip-v3` is the third subversion of cantrip. The tag and the binary use that same name. Names that start with `cpp-` are older engines and are not part of this scheme.
+
+`arcane`, `black-magic`, and `cantrip` are already in use. A spare is an unused alternative for that letter.
+
+| Letter | Name | Spare |
+| --- | --- | --- |
+| A | `arcane` | — |
+| B | `black-magic` | — |
+| C | `cantrip` | — |
+| D | `dumbledore` | — |
+| E | `eldritch` | `evocation` |
+| F | `freya` | — |
+| G | `grimoire` | `glamour` |
+| H | `helios` | — |
+| I | `icarus` | — |
+| J | `jinx` | — |
+| K | `kalliope` | — |
+| L | `labyrinth` | — |
+| M | `mage` | — |
+| N | `necromancer` | — |
+| O | `oracle` | `omen` |
+| P | `philosopher` | — |
+| Q | `Quetzalcoatl` | — |
+| R | `rune` | `ritual` |
+| S | `sigil` | `scrying` |
+| T | `talisman` | `thaumaturgy` |
+| U | `umbra` | `unction` |
+| V | `veil` | `vatic` |
+| W | `warloc` | — |
+| X | `xylomancy` | `xenoglossy` |
+| Y | `yarrow` | `yew` |
+| Z | `zodiac` | `zener` |
 
 ### Freeze a version
 
