@@ -16,6 +16,10 @@ void log_completed_search(std::string_view engine_name,
                           const Board& board,
                           int depth_completed,
                           std::uint64_t nodes,
+                          std::uint64_t tt_probes,
+                          std::uint64_t tt_hits,
+                          std::uint64_t tt_cutoffs,
+                          std::uint64_t first_cutoffs,
                           int budget_ms,
                           bool full_budget,
                           std::optional<int> committed_eval,
@@ -26,6 +30,10 @@ void log_completed_search(std::string_view engine_name,
     stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
     stats.depth = depth_completed;
     stats.nodes = nodes;
+    stats.tt_probes = tt_probes;
+    stats.tt_hits = tt_hits;
+    stats.tt_cutoffs = tt_cutoffs;
+    stats.first_cutoffs = first_cutoffs;
     stats.budget_ms = budget_ms;
     stats.full_budget = full_budget;
     stats.score = committed_eval;
@@ -69,6 +77,10 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
     nodes_ = 1;  // root; search() counts every position below it
+    tt_probes_ = 0;
+    tt_hits_ = 0;
+    tt_cutoffs_ = 0;
+    first_cutoffs_ = 0;
 
     Movelist moves;
     movegen::legalmoves(moves, board);
@@ -104,6 +116,9 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
                     if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
                         (white_to_move ? alpha : beta) = eval;
                         if (beta <= alpha) {
+                            if (move == moves[0]) {
+                                ++first_cutoffs_;
+                            }
                             break;
                         }
                     }
@@ -124,8 +139,8 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
     }
 
     const bool full_budget = out_of_time_;
-    log_completed_search(name(), board, depth_completed, nodes_, budget_ms_, full_budget, committed_eval,
-                         best_move, start_);
+    log_completed_search(name(), board, depth_completed, nodes_, tt_probes_, tt_hits_, tt_cutoffs_, first_cutoffs_,
+                         budget_ms_, full_budget, committed_eval, best_move, start_);
     return best_move;
 }
 
@@ -140,13 +155,21 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
 
     const std::uint64_t hash = board.hash();
     Move hash_move = Move::NO_MOVE;
+    ++tt_probes_;
     if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
+        ++tt_hits_;
         hash_move = entry->best;
         if (entry->depth >= depth) {
-            if (entry->flag == Bound::Exact) return entry->score;
+            if (entry->flag == Bound::Exact) {
+                ++tt_cutoffs_;
+                return entry->score;
+            }
             if (entry->flag == Bound::Lower) alpha = std::max(entry->score, alpha);
             else if (entry->flag == Bound::Upper) beta = std::min(entry->score, beta);
-            if (alpha >= beta) return entry->score;
+            if (alpha >= beta) {
+                ++tt_cutoffs_;
+                return entry->score;
+            }
         }
     }
 
@@ -178,6 +201,9 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
             if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
                 (white_to_move ? alpha : beta) = eval;
                 if (beta <= alpha) {
+                    if (move == moves[0]) {
+                        ++first_cutoffs_;
+                    }
                     break;
                 }
             }

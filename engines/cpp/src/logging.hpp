@@ -26,6 +26,10 @@ struct SearchStats {
     bool full_budget = false;
     std::optional<int> score;
     std::string move;
+    std::uint64_t tt_probes = 0;
+    std::uint64_t tt_hits = 0;
+    std::uint64_t tt_cutoffs = 0;
+    std::uint64_t first_cutoffs = 0;
     std::string fen;
 };
 

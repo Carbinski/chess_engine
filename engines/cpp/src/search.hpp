@@ -30,5 +30,9 @@ private:
     int budget_ms_ = 0;
     bool out_of_time_ = false;
     std::uint64_t nodes_ = 0;
+    std::uint64_t tt_probes_ = 0;
+    std::uint64_t tt_hits_ = 0;
+    std::uint64_t tt_cutoffs_ = 0;
+    std::uint64_t first_cutoffs_ = 0;
     Transposition transposition_table_;
 };

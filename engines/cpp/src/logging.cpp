@@ -182,6 +182,10 @@ private:
     std::int64_t max_elapsed_ms_ = 0;
     std::uint64_t max_nodes_ = 0;
     std::uint64_t full_budget_count_ = 0;
+    std::uint64_t total_tt_probes_ = 0;
+    std::uint64_t total_tt_hits_ = 0;
+    std::uint64_t total_tt_cutoffs_ = 0;
+    std::uint64_t total_first_cutoffs_ = 0;
     long process_id_ = 0;
     std::string started_;
     std::filesystem::path summary_path_;
@@ -242,7 +246,8 @@ Logger::~Logger() {
 
 void Logger::open_trace() {
     constexpr std::string_view header =
-        "engine\tgame\tmove_number\tside\tdepth\tnodes\tnps\telapsed_ms\tbudget_ms\tfull_budget\tscore\tmove\tfen\n";
+        "engine\tgame\tmove_number\tside\tdepth\tnodes\tnps\telapsed_ms\tbudget_ms\tfull_budget\t"
+        "score\tmove\ttt_probes\ttt_hits\ttt_cutoffs\tfirst_cutoffs\tfen\n";
     trace_.open(trace_path_, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!trace_) {
         std::cerr << "could not open " << trace_path_.string() << ": " << errno_message() << '\n';
@@ -328,6 +333,10 @@ void Logger::record(const SearchStats& stats) {
     if (stats.full_budget) {
         ++full_budget_count_;
     }
+    total_tt_probes_ += stats.tt_probes;
+    total_tt_hits_ += stats.tt_hits;
+    total_tt_cutoffs_ += stats.tt_cutoffs;
+    total_first_cutoffs_ += stats.first_cutoffs;
 }
 
 void Logger::write_trace(const SearchStats& stats) {
@@ -349,7 +358,8 @@ void Logger::write_trace(const SearchStats& stats) {
     if (stats.score.has_value()) {
         row << *stats.score;
     }
-    row << '\t' << stats.move << '\t' << stats.fen << '\n';
+    row << '\t' << stats.move << '\t' << stats.tt_probes << '\t' << stats.tt_hits << '\t' << stats.tt_cutoffs << '\t'
+        << stats.first_cutoffs << '\t' << stats.fen << '\n';
 
     trace_ << row.str();
     trace_.flush();
@@ -363,6 +373,10 @@ void Logger::write_trace(const SearchStats& stats) {
 
 void Logger::write_summary() {
     const double searches = static_cast<double>(search_count_);
+    const double tt_cutoff_pct =
+        total_tt_probes_ == 0
+            ? 0.0
+            : 100.0 * static_cast<double>(total_tt_cutoffs_) / static_cast<double>(total_tt_probes_);
     std::ostringstream summary;
     summary << "engine: " << (engine_name_.empty() ? "-" : engine_name_) << '\n'
             << "pid: " << process_id_ << '\n'
@@ -378,7 +392,12 @@ void Logger::write_summary() {
             << one_decimal(search_count_ == 0 ? 0.0 : static_cast<double>(total_nodes_) / searches) << '\n'
             << "max_elapsed_ms: " << max_elapsed_ms_ << '\n'
             << "max_nodes: " << max_nodes_ << '\n'
-            << "full_budget: " << full_budget_count_ << '\n';
+            << "full_budget: " << full_budget_count_ << '\n'
+            << "tt_probes: " << total_tt_probes_ << '\n'
+            << "tt_hits: " << total_tt_hits_ << '\n'
+            << "tt_cutoffs: " << total_tt_cutoffs_ << '\n'
+            << "first_cutoffs: " << total_first_cutoffs_ << '\n'
+            << "tt_cutoff_pct: " << one_decimal(tt_cutoff_pct) << '\n';
 
     std::ofstream out(summary_path_, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!out) {
