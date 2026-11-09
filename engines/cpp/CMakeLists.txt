@@ -10,6 +10,7 @@ add_executable(chess_engine
     src/search.cpp
     src/evaluate.cpp
     src/logging.cpp
+    src/transposition.cpp
 )
 
 target_include_directories(chess_engine PRIVATE

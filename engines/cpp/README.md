@@ -64,9 +64,10 @@ Build fastchess with `make -j` in `tools/fastchess`, then point it at the frozen
 
 ```bash
 tools/fastchess/fastchess \
-  -engine cmd=engines/cpp/releases/cpp-v1 name=cpp-v1 \
-  -engine cmd=engines/cpp/releases/cpp-v2 name=cpp-v2 \
-  -each tc=10+0.1 -rounds 200 -repeat
+  -engine cmd=engines/cpp/releases/black-magic-v2 name=black-magic-v2 \
+  -engine cmd=engines/cpp/releases/cantrip-v1 name=cantrip-v1 \
+  -each tc=10+0.1 -rounds 200 -repeat -concurrency 8 \
+  -openings file=books/UHO_Lichess_4852_v1.epd format=epd order=random
 ```
 
 If two versions differ only by eval weights or search parameters, a data file next to the binary is enough. When search or the board changes, freeze a new binary.

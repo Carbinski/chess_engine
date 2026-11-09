@@ -2,8 +2,10 @@
 #include "evaluate.hpp"
 #include "logging.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <iostream>
+#include <optional>
 
 using namespace chess;
 
@@ -53,9 +55,9 @@ bool eval_is_better(bool white_to_move, int eval, int best_eval) {
     return eval < best_eval;
 }
 
-TreeSearch::TreeSearch() {}
+Cantrip::Cantrip() {}
 
-bool TreeSearch::check_time_expired() {
+bool Cantrip::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
@@ -67,7 +69,7 @@ bool TreeSearch::check_time_expired() {
     return out_of_time_;
 }
 
-chess::Move TreeSearch::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -130,7 +132,7 @@ chess::Move TreeSearch::select_move(const chess::Board& board, std::optional<int
     return best_move;
 }
 
-int TreeSearch::search(chess::Board& board, int depth, int alpha, int beta) {
+int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     ++nodes_;
     if (check_time_expired()) {
         return 0;
@@ -139,20 +141,31 @@ int TreeSearch::search(chess::Board& board, int depth, int alpha, int beta) {
         return evaluate(board);
     }
 
+    const std::uint64_t hash = board.hash();
+    if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
+        if (entry->depth >= depth) {
+            if (entry->flag == Bound::Exact) return entry->score;
+            if (entry->flag == Bound::Lower) alpha = std::max(entry->score, alpha);
+            else if (entry->flag == Bound::Upper) beta = std::min(entry->score, beta);
+            if (alpha >= beta) return entry->score;
+        }
+    }
+
     Movelist moves;
     movegen::legalmoves(moves, board);
-    Board position = board;
-
     if (moves.empty()) {
         return evaluate(board);
     }
 
+    const int original_alpha = alpha;
+    const int original_beta = beta;
     const bool white_to_move = board.sideToMove() == Color::WHITE;
     int best_eval = white_to_move ? -1'000'000 : 1'000'000;
+    Board position = board;
 
     for (const auto& move : moves) {
         position.makeMove(move);
-        int eval = search(position, depth - 1, alpha, beta);
+        const int eval = search(position, depth - 1, alpha, beta);
         position.unmakeMove(move);
         if (out_of_time_) {
             return 0;
@@ -169,9 +182,16 @@ int TreeSearch::search(chess::Board& board, int depth, int alpha, int beta) {
         }
     }
 
+    Bound bound = Bound::Exact;
+    if (best_eval <= original_alpha) {
+        bound = Bound::Upper;
+    } else if (best_eval >= original_beta) {
+        bound = Bound::Lower;
+    }
+    transposition_table_.store_position(Entry{hash, depth, best_eval, bound, Move::NO_MOVE});
     return best_eval;
 }
 
-std::string_view TreeSearch::name() const {
-    return "TreeSearch";
+std::string_view Cantrip::name() const {
+    return "Cantrip";
 }

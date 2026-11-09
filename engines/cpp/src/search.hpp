@@ -1,6 +1,7 @@
 #pragma once
 
 #include "chess.hpp"
+#include "transposition.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -15,9 +16,9 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class TreeSearch : public Search {
+class Cantrip : public Search {
 public:
-    TreeSearch();
+    Cantrip();
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 
@@ -29,4 +30,5 @@ private:
     int budget_ms_ = 0;
     bool out_of_time_ = false;
     std::uint64_t nodes_ = 0;
+    Transposition transposition_table_;
 };
