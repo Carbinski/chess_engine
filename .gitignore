@@ -27,6 +27,7 @@ node_modules/
 out/
 
 # Editors and OS
+.cursor/
 .idea/
 .vscode/
 *.iml
@@ -45,3 +46,7 @@ java_vs_java.html
 # Local fastchess run (machine paths and match stats)
 /config.json
 /books*
+
+# Local agent instructions
+/AGENTS.md
+/CLAUDE.md
