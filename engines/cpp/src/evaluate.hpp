@@ -83,6 +83,9 @@ struct PieceSquareWeights {
     };
 };
 
+// Checkmate, before search counts the plies.
+inline constexpr int checkmate_score = 1'000'000;
+
 int game_phase(const chess::Board& board);
 int interpolate(const int midgame, const int endgame, int phase);
 int score_piece(const chess::Board& board, chess::PieceType type, int value, const int table[64]);

@@ -2,6 +2,7 @@
 #include "evaluate.hpp"
 #include "logging.hpp"
 #include "move_ordering.hpp"
+#include "search_util.hpp"
 
 #include <algorithm>
 #include <exception>
@@ -94,9 +95,9 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
         for (int depth = 1; ; ++depth) {
             MoveOrdering{}.order_moves(moves, best_move);
 
-            int best_eval = white_to_move ? -1'000'000 : 1'000'000;
-            int alpha = -1'000'000;
-            int beta = 1'000'000;
+            int best_eval = worst_eval(white_to_move);
+            int alpha = -checkmate_score;
+            int beta = checkmate_score;
             Move iteration_best = best_move;
 
             for (const auto& move : moves) {
@@ -106,7 +107,7 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
 
                 Board position = board;
                 position.makeMove(move);
-                const int eval = search(position, depth - 1, alpha, beta);
+                const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
                 if (out_of_time_) {
                     break;
                 }
@@ -122,6 +123,9 @@ chess::Move Cantrip::select_move(const chess::Board& board, std::optional<int> t
                             break;
                         }
                     }
+                }
+                if (mate_in_one(white_to_move, eval)) {
+                    break;
                 }
             }
 
@@ -183,13 +187,13 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
     const int original_alpha = alpha;
     const int original_beta = beta;
     const bool white_to_move = board.sideToMove() == Color::WHITE;
-    int best_eval = white_to_move ? -1'000'000 : 1'000'000;
+    int best_eval = worst_eval(white_to_move);
     Move best_move = Move::NO_MOVE;
     Board position = board;
 
     for (const auto& move : moves) {
         position.makeMove(move);
-        const int eval = search(position, depth - 1, alpha, beta);
+        const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
         position.unmakeMove(move);
         if (out_of_time_) {
             return 0;
@@ -207,6 +211,9 @@ int Cantrip::search(chess::Board& board, int depth, int alpha, int beta) {
                     break;
                 }
             }
+        }
+        if (mate_in_one(white_to_move, eval)) {
+            break;
         }
     }
 

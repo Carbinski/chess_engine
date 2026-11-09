@@ -36,7 +36,7 @@ int score_piece(const chess::Board& board, chess::PieceType type, int value, con
 int evaluate(const chess::Board& board) {
     const auto result = board.isGameOver().second;
     if (result == chess::GameResult::LOSE) {
-        return board.sideToMove() == chess::Color::WHITE ? -1'000'000 : 1'000'000;
+        return board.sideToMove() == chess::Color::WHITE ? -checkmate_score : checkmate_score;
     }
     if (result == chess::GameResult::DRAW) {
         return 0;
