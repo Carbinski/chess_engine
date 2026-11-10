@@ -18,6 +18,7 @@ from bots.midgame_v3 import MidGameBotV3
 from bots.midgame_v4 import MidGameBotV4
 from bots.minimal_v1 import MiniBotV1
 from bots.random_algo import RandomBot
+from support.time_budget import budget_ms, depth_cap
 
 BOTS = {
     "AggressiveBot": AggressiveBot,
@@ -35,6 +36,18 @@ BOTS = {
     "RandomBot": RandomBot,
 }
 
+_GO_VALUES = {
+    "wtime",
+    "btime",
+    "winc",
+    "binc",
+    "movetime",
+    "depth",
+    "nodes",
+    "mate",
+    "movestogo",
+}
+
 
 def send(line):
     print(line, flush=True)
@@ -42,6 +55,8 @@ def send(line):
 
 def apply_position(board, tokens):
     index = 1
+    if index >= len(tokens):
+        return
     if tokens[index] == "startpos":
         board.reset()
         index += 1
@@ -56,6 +71,61 @@ def apply_position(board, tokens):
     if index < len(tokens) and tokens[index] == "moves":
         for move in tokens[index + 1 :]:
             board.push_uci(move)
+
+
+def time_remaining_ms(board, tokens):
+    """Full clock for the side to move, in milliseconds. None if ``go`` has no clock."""
+    values = {}
+    index = 1
+    while index < len(tokens):
+        key = tokens[index]
+        if key in _GO_VALUES and index + 1 < len(tokens):
+            try:
+                values[key] = int(tokens[index + 1])
+            except ValueError:
+                return None
+            index += 2
+            continue
+        index += 1
+
+    if "movetime" in values:
+        return values["movetime"]
+    if board.turn == chess.WHITE and "wtime" in values:
+        return values["wtime"]
+    if board.turn == chess.BLACK and "btime" in values:
+        return values["btime"]
+    return None
+
+
+def first_legal(board):
+    for move in board.legal_moves:
+        return move
+    return None
+
+
+def choose_move(bot, board, remaining):
+    """Return a move, or None when the position has no legal move."""
+    if not any(board.legal_moves):
+        return None
+
+    budget = budget_ms(remaining)
+    if budget is not None and budget <= 0:
+        return first_legal(board)
+
+    saved_depth = getattr(bot, "depth", None)
+    bot._clock_budget_ms = budget
+    if isinstance(saved_depth, int) and budget is not None:
+        bot.depth = depth_cap(saved_depth, budget)
+    try:
+        move = bot.select_move(board)
+    finally:
+        bot._clock_budget_ms = None
+        if isinstance(saved_depth, int):
+            bot.depth = saved_depth
+
+    if isinstance(move, chess.Move):
+        return move
+    return first_legal(board)
 
 
 def main():
@@ -80,17 +150,28 @@ def main():
         elif command == "isready":
             send("readyok")
         elif command == "ucinewgame":
+            bot = BOTS[bot_name]()
             board.reset()
         elif command == "position":
-            apply_position(board, tokens)
+            try:
+                apply_position(board, tokens)
+            except ValueError as exc:
+                print(f"Bad position: {exc}", file=sys.stderr)
         elif command == "go":
+            remaining = time_remaining_ms(board, tokens)
             saved = sys.stdout
             sys.stdout = sys.stderr
             try:
-                move = bot.select_move(board)
+                move = choose_move(bot, board, remaining)
+            except Exception as exc:
+                print(f"Search failed: {exc}", file=sys.stderr)
+                move = None
             finally:
                 sys.stdout = saved
-            send(f"bestmove {move.uci()}")
+            if isinstance(move, chess.Move):
+                send(f"bestmove {move.uci()}")
+            else:
+                send("bestmove 0000")
         elif command == "quit":
             break
 

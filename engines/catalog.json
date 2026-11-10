@@ -1,0 +1,28 @@
+{
+  "engines": [
+    {"id": "python_random", "name": "Python: Random", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "RandomBot"]},
+    {"id": "python_aggressive", "name": "Python: Aggressive", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "AggressiveBot"]},
+    {"id": "python_dumb_eval", "name": "Python: DumbEval", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "DumbEvalBot"]},
+    {"id": "python_basic_search", "name": "Python: Basic Search", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "BasicSearchBot"]},
+    {"id": "python_fast", "name": "Python: FastBot", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "FastBot"]},
+    {"id": "python_fast_v2", "name": "Python: FastBotV2", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "FastBotV2"]},
+    {"id": "python_fast_v3", "name": "Python: FastBotV3", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "FastBotV3"]},
+    {"id": "python_fast_v4", "name": "Python: FastBotV4", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "FastBotV4"]},
+    {"id": "python_midgame_v1", "name": "Python: MidGameBotV1", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV1"]},
+    {"id": "python_midgame_v2", "name": "Python: MidGameBotV2", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV2"]},
+    {"id": "python_midgame_v3", "name": "Python: MidGameBotV3", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV3"]},
+    {"id": "python_midgame_v4", "name": "Python: MidGameBotV4", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV4"]},
+    {"id": "python_minimal", "name": "Python: MiniBotV1", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MiniBotV1"]},
+    {"id": "java_basic_v1", "name": "Java: BasicBot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "BasicBot_V1"]},
+    {"id": "java_basic_v2", "name": "Java: BasicBot_V2", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "BasicBot_V2"]},
+    {"id": "java_basic_v3", "name": "Java: BasicBot_V3", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "BasicBot_V3"]},
+    {"id": "java_fast_v1", "name": "Java: FastBot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "FastBot_V1"]},
+    {"id": "java_fast_v2", "name": "Java: FastBot_V2", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "FastBot_V2"]},
+    {"id": "java_bot_v1", "name": "Java: Bot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V1"]},
+    {"id": "java_bot_v2", "name": "Java: Bot_V2", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V2"]},
+    {"id": "java_bot_v3", "name": "Java: Bot_V3", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V3"]},
+    {"id": "java_bot_v4", "name": "Java: Bot_V4", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V4"]},
+    {"id": "java_time_bot", "name": "Java: TimeBot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "TimeBot_V1"]},
+    {"id": "cpp_search", "name": "C++: Search", "language": "cpp", "command": ["{root}/engines/cpp/build/chess_engine"]}
+  ]
+}

@@ -198,8 +198,13 @@ class MidGameBotV3:
 
         self.board = board
         moves = board.legal_moves
+        committed = None
+        budget_ms = getattr(self, "_clock_budget_ms", None)
+        search_started = time.perf_counter()
 
         for i in range(1, self.depth + 1):
+            if budget_ms is not None and (time.perf_counter() - search_started) * 1000 >= budget_ms:
+                break
 
             iter_best_eval, iter_best_move = float('-inf'), None
             alpha, beta = float('-inf'), float('inf')
@@ -224,11 +229,15 @@ class MidGameBotV3:
             # Sort moves for the NEXT iteration based on scores from THIS iteration
             move_scores.sort(key=lambda x: x[0], reverse=True)
             moves = [item[1] for item in move_scores]
+            committed = iter_best_move
 
 
         if self.stat_tracking:
             end_time = time.perf_counter()
             self.total_time += end_time - start_time
-            print(f"MOVE: {iter_best_move} | EVAL: {round(iter_best_eval, 2)} | GAMESTAGE: {self.get_phase()} | TIME: {end_time - start_time}")
+            print(f"MOVE: {committed} | EVAL: {round(iter_best_eval, 2) if committed is not None else 0} | GAMESTAGE: {self.get_phase()} | TIME: {end_time - start_time}")
 
-        return iter_best_move
+        if committed is None:
+            legal = list(board.legal_moves)
+            return random.choice(legal) if legal else None
+        return committed

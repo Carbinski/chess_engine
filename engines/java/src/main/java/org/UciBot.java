@@ -5,7 +5,10 @@ import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.move.Move;
 
 import java.io.PrintStream;
+import java.util.List;
 import java.util.Scanner;
+
+import support.ClockBudget;
 
 public class UciBot {
     public static void main(String[] args) {
@@ -34,6 +37,7 @@ public class UciBot {
                     send("readyok");
                     break;
                 case "ucinewgame":
+                    bot = createBot(botName);
                     board = new Board();
                     break;
                 case "position":
@@ -41,15 +45,32 @@ public class UciBot {
                     break;
                 case "go":
                     long timeLeft = timeForSide(board, tokens);
+                    if (ClockBudget.budgetMs(timeLeft) <= 0) {
+                        send(firstLegal(board));
+                        break;
+                    }
+                    int nominalDepth = nominalDepth(bot);
+                    if (nominalDepth > 0) {
+                        setDepth(bot, ClockBudget.depthCap(nominalDepth, ClockBudget.budgetMs(timeLeft)));
+                    }
                     PrintStream out = System.out;
                     System.setOut(System.err);
-                    Move move;
+                    Move move = null;
                     try {
                         move = bot.select_move(board, timeLeft);
+                    } catch (RuntimeException ex) {
+                        System.err.println("Search failed: " + ex.getMessage());
                     } finally {
                         System.setOut(out);
+                        if (nominalDepth > 0) {
+                            setDepth(bot, nominalDepth);
+                        }
                     }
-                    send("bestmove " + move);
+                    if (move == null) {
+                        send("bestmove 0000");
+                    } else {
+                        send("bestmove " + move);
+                    }
                     break;
                 case "quit":
                     return;
@@ -86,8 +107,38 @@ public class UciBot {
         }
     }
 
+    /** Fixed-depth bots that do not watch the clock. Time-aware bots return -1. */
+    private static int nominalDepth(JavaChessBot bot) {
+        if (bot instanceof BasicBot_V1 basic) {
+            return basic.depth;
+        }
+        if (bot instanceof BasicBot_V2 basic) {
+            return basic.depth;
+        }
+        return -1;
+    }
+
+    private static void setDepth(JavaChessBot bot, int depth) {
+        if (bot instanceof BasicBot_V1 basic) {
+            basic.depth = depth;
+        } else if (bot instanceof BasicBot_V2 basic) {
+            basic.depth = depth;
+        }
+    }
+
+    private static String firstLegal(Board board) {
+        List<Move> moves = board.legalMoves();
+        if (moves.isEmpty()) {
+            return "bestmove 0000";
+        }
+        return "bestmove " + moves.get(0);
+    }
+
     private static Board applyPosition(String[] tokens) {
         Board board = new Board();
+        if (tokens.length < 2) {
+            return board;
+        }
         int index = 1;
         if (tokens[index].equals("startpos")) {
             index++;
@@ -100,13 +151,27 @@ public class UciBot {
                 }
                 fen.append(tokens[index++]);
             }
-            board.loadFromFen(fen.toString());
+            try {
+                board.loadFromFen(fen.toString());
+            } catch (RuntimeException ex) {
+                System.err.println("Bad FEN: " + fen);
+                return new Board();
+            }
         }
 
         if (index < tokens.length && tokens[index].equals("moves")) {
             index++;
             while (index < tokens.length) {
-                board.doMove(new Move(tokens[index], board.getSideToMove()));
+                try {
+                    Move move = new Move(tokens[index], board.getSideToMove());
+                    if (!board.doMove(move)) {
+                        System.err.println("Illegal move: " + tokens[index]);
+                        break;
+                    }
+                } catch (RuntimeException ex) {
+                    System.err.println("Bad move: " + tokens[index]);
+                    break;
+                }
                 index++;
             }
         }
@@ -114,22 +179,33 @@ public class UciBot {
     }
 
     private static long timeForSide(Board board, String[] tokens) {
-        long wtime = 1000;
-        long btime = 1000;
+        long wtime = -1;
+        long btime = -1;
         long movetime = -1;
-        for (int i = 1; i < tokens.length - 1; i++) {
-            if (tokens[i].equals("wtime")) {
-                wtime = Long.parseLong(tokens[++i]);
-            } else if (tokens[i].equals("btime")) {
-                btime = Long.parseLong(tokens[++i]);
-            } else if (tokens[i].equals("movetime")) {
-                movetime = Long.parseLong(tokens[++i]);
+        try {
+            for (int i = 1; i < tokens.length - 1; i++) {
+                if (tokens[i].equals("wtime")) {
+                    wtime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("btime")) {
+                    btime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("movetime")) {
+                    movetime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("winc") || tokens[i].equals("binc")
+                        || tokens[i].equals("movestogo") || tokens[i].equals("depth")
+                        || tokens[i].equals("nodes") || tokens[i].equals("mate")) {
+                    i++;
+                }
             }
+        } catch (NumberFormatException ex) {
+            return 0;
         }
         if (movetime >= 0) {
             return movetime;
         }
-        return board.getSideToMove() == Side.WHITE ? wtime : btime;
+        long remaining = board.getSideToMove() == Side.WHITE ? wtime : btime;
+        // A bare `go` has no clock. Budget 0 matches the C++ engine, which then
+        // plays its first legal move.
+        return remaining >= 0 ? remaining : 0;
     }
 
     private static void send(String line) {
