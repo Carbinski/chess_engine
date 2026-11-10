@@ -20,3 +20,10 @@ inline bool mate_in_one(bool white_to_move, int eval) {
 inline int worst_eval(bool white_to_move) {
     return white_to_move ? -checkmate_score : checkmate_score;
 }
+
+inline bool eval_is_better(bool white_to_move, int eval, int best_eval) {
+    if (white_to_move) {
+        return eval > best_eval;
+    }
+    return eval < best_eval;
+}

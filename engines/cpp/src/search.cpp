@@ -52,13 +52,6 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-bool eval_is_better(bool white_to_move, int eval, int best_eval) {
-    if (white_to_move) {
-        return eval > best_eval;
-    }
-    return eval < best_eval;
-}
-
 Dumbledore::Dumbledore() {}
 
 bool Dumbledore::check_time_expired() {
