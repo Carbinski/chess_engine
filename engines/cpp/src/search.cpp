@@ -52,9 +52,9 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-Dumbledore::Dumbledore() {}
+Eldritch::Eldritch() {}
 
-bool Dumbledore::check_time_expired() {
+bool Eldritch::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
@@ -66,7 +66,7 @@ bool Dumbledore::check_time_expired() {
     return out_of_time_;
 }
 
-chess::Move Dumbledore::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -86,7 +86,7 @@ chess::Move Dumbledore::select_move(const chess::Board& board, std::optional<int
         best_move = moves[0];
         const bool white_to_move = board.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
-            MoveOrdering{}.order_moves(moves, best_move);
+            MoveOrdering{}.order_moves(moves, best_move, board);
 
             int best_eval = worst_eval(white_to_move);
             int alpha = -checkmate_score;
@@ -141,7 +141,7 @@ chess::Move Dumbledore::select_move(const chess::Board& board, std::optional<int
     return best_move;
 }
 
-int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
+int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     ++nodes_;
     if (check_time_expired()) {
         return 0;
@@ -175,7 +175,7 @@ int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
     if (moves.empty()) {
         return evaluate(board);
     }
-    MoveOrdering{}.order_moves(moves, hash_move);
+    MoveOrdering{}.order_moves(moves, hash_move, board);
 
     const int original_alpha = alpha;
     const int original_beta = beta;
@@ -220,6 +220,6 @@ int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
     return best_eval;
 }
 
-std::string_view Dumbledore::name() const {
-    return "Dumbledore";
+std::string_view Eldritch::name() const {
+    return "Eldritch";
 }

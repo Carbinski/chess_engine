@@ -23,5 +23,5 @@ public:
     std::string_view name() const override;
 
 private:
-    Dumbledore search_;
+    Eldritch search_;
 };

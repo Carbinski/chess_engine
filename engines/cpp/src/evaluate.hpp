@@ -88,7 +88,8 @@ inline constexpr int checkmate_score = 1'000'000;
 
 int game_phase(const chess::Board& board);
 int interpolate(const int midgame, const int endgame, int phase);
-int score_piece(const chess::Board& board, chess::PieceType type, int value, const int table[64]);
+int piece_value(chess::PieceType type);
+int score_piece(const chess::Board& board, chess::PieceType type, const int table[64]);
 
 inline PieceValues piece_values;
 inline PieceSquareWeights piece_square_weights;
