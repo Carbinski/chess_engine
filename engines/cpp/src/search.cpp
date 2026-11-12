@@ -93,7 +93,7 @@ chess::Move Dumbledore::select_move(const chess::Board& board, std::optional<int
         best_move = moves[0];
         const bool white_to_move = board.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
-            MoveOrdering{}.order_moves(moves, best_move);
+            MoveOrdering{}.order_moves(board, moves, best_move);
 
             int best_eval = worst_eval(white_to_move);
             int alpha = -checkmate_score;
@@ -182,7 +182,7 @@ int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
     if (moves.empty()) {
         return evaluate(board);
     }
-    MoveOrdering{}.order_moves(moves, hash_move);
+    MoveOrdering{}.order_moves(board, moves, hash_move);
 
     const int original_alpha = alpha;
     const int original_beta = beta;
@@ -228,5 +228,9 @@ int Dumbledore::search(chess::Board& board, int depth, int alpha, int beta) {
 }
 
 std::string_view Dumbledore::name() const {
+#ifndef ENGINE_LABEL
     return "Dumbledore";
+#else
+    return ENGINE_LABEL;
+#endif
 }

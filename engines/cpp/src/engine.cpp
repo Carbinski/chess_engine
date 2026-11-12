@@ -9,5 +9,5 @@ Move SearchEngine::select_move(const Board& board, std::optional<int> time_remai
 }
 
 std::string_view SearchEngine::name() const {
-    return "Search";
+    return search_.name();
 }
