@@ -9,6 +9,14 @@
 #include <string_view>
 #include <chrono>
 
+struct SearchCounters {
+    std::uint64_t nodes = 0;
+    std::uint64_t tt_probes = 0;
+    std::uint64_t tt_hits = 0;
+    std::uint64_t tt_cutoffs = 0;
+    std::uint64_t first_cutoffs = 0;
+};
+
 class Search {
 public:
     virtual ~Search() = default;
@@ -30,11 +38,7 @@ private:
     std::chrono::steady_clock::time_point start_{};
     int budget_ms_ = 0;
     bool out_of_time_ = false;
-    std::uint64_t nodes_ = 0;
-    std::uint64_t tt_probes_ = 0;
-    std::uint64_t tt_hits_ = 0;
-    std::uint64_t tt_cutoffs_ = 0;
-    std::uint64_t first_cutoffs_ = 0;
+    SearchCounters counters_;
     Transposition transposition_table_;
     MoveOrdering move_ordering_;
 };
