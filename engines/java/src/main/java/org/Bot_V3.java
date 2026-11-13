@@ -17,7 +17,6 @@ import support.TranspositionTable;
 public class Bot_V3 implements JavaChessBot {
     Board board;
     int depth;
-    long move_budget_ms = Long.MAX_VALUE;
 
     boolean stat_tracking;
     boolean random_opening;
@@ -471,20 +470,11 @@ public class Bot_V3 implements JavaChessBot {
     }
 
     @Override
-    public Move select_move(Board board, long time_left) {
-        this.move_budget_ms = support.ClockBudget.budgetMs(time_left);
-        try {
-            return select_move(board);
-        } finally {
-            this.move_budget_ms = Long.MAX_VALUE;
-        }
-    }
-
-    @Override
     public Move select_move(Board board) {
-        long start_time = System.currentTimeMillis();
+        long start_time = 0;
         if (stat_tracking) {
             total_moves += 1;
+            start_time = System.currentTimeMillis();
         }
 
         List<Move> legal_moves = board.legalMoves();
@@ -520,7 +510,8 @@ public class Bot_V3 implements JavaChessBot {
                 ordered_moves.addFirst(global_best_move);
             }
 
-            long time_limit = this.move_budget_ms;
+            // TODO: add time management
+            int time_limit = Integer.MAX_VALUE;
             boolean time_abort = false;
 
             for (Move move : ordered_moves) {

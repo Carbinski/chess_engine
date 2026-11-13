@@ -16,14 +16,14 @@ The Python code uses the [chess](https://python-chess.readthedocs.io/) library. 
 
 ## Cross-play
 
-Python, Java, and the C++ binary all speak UCI. `python -m crossplay` is the referee: it owns the clock and the result, and either color can be any engine in `engines/catalog.json`. Think time uses the same split as the C++ engine, `remaining / 75` milliseconds. Increment is ignored by the engines and awarded by the referee.
+Python, Java, and the C++ binary all speak UCI. `python -m crossplay` is the referee: it owns the clock and the result, and either color can be any engine in `engines/catalog.json`. `MidGameBotV5` and `Bot_V5` are the Python and Java engines that spend the same think time as the C++ engine, `remaining / 75` milliseconds. The other bots keep their own search. Increment is awarded by the referee.
 
 ```bash
 python -m pip install -r requirements.txt
 mvn -f engines/java/pom.xml -q compile
 python -m crossplay list
 python -m crossplay conform
-python -m crossplay match python_random java_bot_v2 --time 10000 --inc 100
+python -m crossplay match python_midgame_v5 java_bot_v5 --time 10000 --inc 100
 ```
 
 `--time` and `--inc` are milliseconds. `roundrobin` alternates colors for each pair. `fastchess` prints a command for `tools/fastchess` when that runner is built; it does not ship in this tree.

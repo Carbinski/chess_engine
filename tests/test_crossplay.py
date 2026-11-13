@@ -119,9 +119,29 @@ class RefereeTests(unittest.TestCase):
         self.assertEqual(snap["result"], "*")
 
 
+class TimedBotTests(unittest.TestCase):
+    def test_midgame_v5_uses_the_clock(self):
+        sys.path.insert(0, str(ROOT / "engines" / "python"))
+        import chess
+        from bots.midgame_v5 import MidGameBotV5
+
+        bot = MidGameBotV5()
+        bot.stat_tracking = False
+        board = chess.Board()
+        started = time.perf_counter()
+        move = bot.select_move(board, time_remaining_ms=0)
+        self.assertLess(time.perf_counter() - started, 0.5)
+        self.assertIn(move, board.legal_moves)
+
+        started = time.perf_counter()
+        move = bot.select_move(board, time_remaining_ms=3000)
+        self.assertLess(time.perf_counter() - started, 2.0)
+        self.assertIn(move, board.legal_moves)
+
+
 class ConformTests(unittest.TestCase):
     def test_python_random_and_fast(self):
-        for engine_id in ("python_random", "python_fast_v4"):
+        for engine_id in ("python_random", "python_fast_v4", "python_midgame_v5"):
             spec = get(engine_id)
             session = UciSession(spec["command"], spec["name"])
             try:
@@ -129,11 +149,11 @@ class ConformTests(unittest.TestCase):
             finally:
                 session.close()
 
-    def test_java_bot_v2_when_built(self):
+    def test_java_bot_v5_when_built(self):
         ready = {row["id"] for row in engines()}
-        if "java_bot_v2" not in ready:
+        if "java_bot_v5" not in ready:
             self.skipTest("Java classes are not built")
-        spec = get("java_bot_v2")
+        spec = get("java_bot_v5")
         session = UciSession(spec["command"], spec["name"])
         try:
             conform(session)

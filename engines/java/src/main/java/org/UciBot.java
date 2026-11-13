@@ -5,10 +5,7 @@ import com.github.bhlangonijr.chesslib.Side;
 import com.github.bhlangonijr.chesslib.move.Move;
 
 import java.io.PrintStream;
-import java.util.List;
 import java.util.Scanner;
-
-import support.ClockBudget;
 
 public class UciBot {
     public static void main(String[] args) {
@@ -45,14 +42,6 @@ public class UciBot {
                     break;
                 case "go":
                     long timeLeft = timeForSide(board, tokens);
-                    if (ClockBudget.budgetMs(timeLeft) <= 0) {
-                        send(firstLegal(board));
-                        break;
-                    }
-                    int nominalDepth = nominalDepth(bot);
-                    if (nominalDepth > 0) {
-                        setDepth(bot, ClockBudget.depthCap(nominalDepth, ClockBudget.budgetMs(timeLeft)));
-                    }
                     PrintStream out = System.out;
                     System.setOut(System.err);
                     Move move = null;
@@ -62,9 +51,6 @@ public class UciBot {
                         System.err.println("Search failed: " + ex.getMessage());
                     } finally {
                         System.setOut(out);
-                        if (nominalDepth > 0) {
-                            setDepth(bot, nominalDepth);
-                        }
                     }
                     if (move == null) {
                         send("bestmove 0000");
@@ -100,38 +86,13 @@ public class UciBot {
                 return new Bot_V3(6, false, false);
             case "Bot_V4":
                 return new Bot_V4(6, false, false);
+            case "Bot_V5":
+                return new Bot_V5(6, false, false);
             case "TimeBot_V1":
                 return new TimeBot_V1(64, false, false);
             default:
                 return null;
         }
-    }
-
-    /** Fixed-depth bots that do not watch the clock. Time-aware bots return -1. */
-    private static int nominalDepth(JavaChessBot bot) {
-        if (bot instanceof BasicBot_V1 basic) {
-            return basic.depth;
-        }
-        if (bot instanceof BasicBot_V2 basic) {
-            return basic.depth;
-        }
-        return -1;
-    }
-
-    private static void setDepth(JavaChessBot bot, int depth) {
-        if (bot instanceof BasicBot_V1 basic) {
-            basic.depth = depth;
-        } else if (bot instanceof BasicBot_V2 basic) {
-            basic.depth = depth;
-        }
-    }
-
-    private static String firstLegal(Board board) {
-        List<Move> moves = board.legalMoves();
-        if (moves.isEmpty()) {
-            return "bestmove 0000";
-        }
-        return "bestmove " + moves.get(0);
     }
 
     private static Board applyPosition(String[] tokens) {
@@ -179,8 +140,8 @@ public class UciBot {
     }
 
     private static long timeForSide(Board board, String[] tokens) {
-        long wtime = -1;
-        long btime = -1;
+        long wtime = 1000;
+        long btime = 1000;
         long movetime = -1;
         try {
             for (int i = 1; i < tokens.length - 1; i++) {
@@ -202,10 +163,7 @@ public class UciBot {
         if (movetime >= 0) {
             return movetime;
         }
-        long remaining = board.getSideToMove() == Side.WHITE ? wtime : btime;
-        // A bare `go` has no clock. Budget 0 matches the C++ engine, which then
-        // plays its first legal move.
-        return remaining >= 0 ? remaining : 0;
+        return board.getSideToMove() == Side.WHITE ? wtime : btime;
     }
 
     private static void send(String line) {

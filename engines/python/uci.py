@@ -16,9 +16,9 @@ from bots.midgame_v1 import MidGameBotV1
 from bots.midgame_v2 import MidGameBotV2
 from bots.midgame_v3 import MidGameBotV3
 from bots.midgame_v4 import MidGameBotV4
+from bots.midgame_v5 import MidGameBotV5
 from bots.minimal_v1 import MiniBotV1
 from bots.random_algo import RandomBot
-from support.time_budget import budget_ms, depth_cap
 
 BOTS = {
     "AggressiveBot": AggressiveBot,
@@ -32,6 +32,7 @@ BOTS = {
     "MidGameBotV2": MidGameBotV2,
     "MidGameBotV3": MidGameBotV3,
     "MidGameBotV4": MidGameBotV4,
+    "MidGameBotV5": MidGameBotV5,
     "MiniBotV1": MiniBotV1,
     "RandomBot": RandomBot,
 }
@@ -104,24 +105,18 @@ def first_legal(board):
 
 
 def choose_move(bot, board, remaining):
-    """Return a move, or None when the position has no legal move."""
+    """Return a move, or None when the position has no legal move.
+
+    Only MidGameBotV5 spends the shared clock. The other bots keep their
+    fixed-depth search.
+    """
     if not any(board.legal_moves):
         return None
 
-    budget = budget_ms(remaining)
-    if budget is not None and budget <= 0:
-        return first_legal(board)
-
-    saved_depth = getattr(bot, "depth", None)
-    bot._clock_budget_ms = budget
-    if isinstance(saved_depth, int) and budget is not None:
-        bot.depth = depth_cap(saved_depth, budget)
-    try:
+    if isinstance(bot, MidGameBotV5):
+        move = bot.select_move(board, time_remaining_ms=remaining)
+    else:
         move = bot.select_move(board)
-    finally:
-        bot._clock_budget_ms = None
-        if isinstance(saved_depth, int):
-            bot.depth = saved_depth
 
     if isinstance(move, chess.Move):
         return move

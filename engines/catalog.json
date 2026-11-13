@@ -12,6 +12,7 @@
     {"id": "python_midgame_v2", "name": "Python: MidGameBotV2", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV2"]},
     {"id": "python_midgame_v3", "name": "Python: MidGameBotV3", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV3"]},
     {"id": "python_midgame_v4", "name": "Python: MidGameBotV4", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV4"]},
+    {"id": "python_midgame_v5", "name": "Python: MidGameBotV5", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MidGameBotV5"]},
     {"id": "python_minimal", "name": "Python: MiniBotV1", "language": "python", "command": ["{python}", "{root}/engines/python/uci.py", "MiniBotV1"]},
     {"id": "java_basic_v1", "name": "Java: BasicBot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "BasicBot_V1"]},
     {"id": "java_basic_v2", "name": "Java: BasicBot_V2", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "BasicBot_V2"]},
@@ -22,6 +23,7 @@
     {"id": "java_bot_v2", "name": "Java: Bot_V2", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V2"]},
     {"id": "java_bot_v3", "name": "Java: Bot_V3", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V3"]},
     {"id": "java_bot_v4", "name": "Java: Bot_V4", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V4"]},
+    {"id": "java_bot_v5", "name": "Java: Bot_V5", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "Bot_V5"]},
     {"id": "java_time_bot", "name": "Java: TimeBot_V1", "language": "java", "command": ["{java}", "-cp", "{java_cp}", "org.UciBot", "TimeBot_V1"]},
     {"id": "cpp_search", "name": "C++: Search", "language": "cpp", "command": ["{root}/engines/cpp/build/chess_engine"]}
   ]

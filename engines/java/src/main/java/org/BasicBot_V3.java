@@ -366,7 +366,7 @@ public class BasicBot_V3 implements JavaChessBot {
     @Override
     public Move select_move(Board board, long time_left) {
         long start_time = System.currentTimeMillis();
-        long allocated_time = support.ClockBudget.budgetMs(time_left);
+        long allocated_time = (time_left / 30) - 50;
 
         this.stop_time = start_time + allocated_time;
         this.abort_search = false;
