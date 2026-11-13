@@ -34,6 +34,7 @@ public class UciBot {
                     send("readyok");
                     break;
                 case "ucinewgame":
+                    bot = createBot(botName);
                     board = new Board();
                     break;
                 case "position":
@@ -43,13 +44,19 @@ public class UciBot {
                     long timeLeft = timeForSide(board, tokens);
                     PrintStream out = System.out;
                     System.setOut(System.err);
-                    Move move;
+                    Move move = null;
                     try {
                         move = bot.select_move(board, timeLeft);
+                    } catch (RuntimeException ex) {
+                        System.err.println("Search failed: " + ex.getMessage());
                     } finally {
                         System.setOut(out);
                     }
-                    send("bestmove " + move);
+                    if (move == null) {
+                        send("bestmove 0000");
+                    } else {
+                        send("bestmove " + move);
+                    }
                     break;
                 case "quit":
                     return;
@@ -79,6 +86,8 @@ public class UciBot {
                 return new Bot_V3(6, false, false);
             case "Bot_V4":
                 return new Bot_V4(6, false, false);
+            case "Bot_V5":
+                return new Bot_V5(6, false, false);
             case "TimeBot_V1":
                 return new TimeBot_V1(64, false, false);
             default:
@@ -88,6 +97,9 @@ public class UciBot {
 
     private static Board applyPosition(String[] tokens) {
         Board board = new Board();
+        if (tokens.length < 2) {
+            return board;
+        }
         int index = 1;
         if (tokens[index].equals("startpos")) {
             index++;
@@ -100,13 +112,27 @@ public class UciBot {
                 }
                 fen.append(tokens[index++]);
             }
-            board.loadFromFen(fen.toString());
+            try {
+                board.loadFromFen(fen.toString());
+            } catch (RuntimeException ex) {
+                System.err.println("Bad FEN: " + fen);
+                return new Board();
+            }
         }
 
         if (index < tokens.length && tokens[index].equals("moves")) {
             index++;
             while (index < tokens.length) {
-                board.doMove(new Move(tokens[index], board.getSideToMove()));
+                try {
+                    Move move = new Move(tokens[index], board.getSideToMove());
+                    if (!board.doMove(move)) {
+                        System.err.println("Illegal move: " + tokens[index]);
+                        break;
+                    }
+                } catch (RuntimeException ex) {
+                    System.err.println("Bad move: " + tokens[index]);
+                    break;
+                }
                 index++;
             }
         }
@@ -117,14 +143,22 @@ public class UciBot {
         long wtime = 1000;
         long btime = 1000;
         long movetime = -1;
-        for (int i = 1; i < tokens.length - 1; i++) {
-            if (tokens[i].equals("wtime")) {
-                wtime = Long.parseLong(tokens[++i]);
-            } else if (tokens[i].equals("btime")) {
-                btime = Long.parseLong(tokens[++i]);
-            } else if (tokens[i].equals("movetime")) {
-                movetime = Long.parseLong(tokens[++i]);
+        try {
+            for (int i = 1; i < tokens.length - 1; i++) {
+                if (tokens[i].equals("wtime")) {
+                    wtime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("btime")) {
+                    btime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("movetime")) {
+                    movetime = Long.parseLong(tokens[++i]);
+                } else if (tokens[i].equals("winc") || tokens[i].equals("binc")
+                        || tokens[i].equals("movestogo") || tokens[i].equals("depth")
+                        || tokens[i].equals("nodes") || tokens[i].equals("mate")) {
+                    i++;
+                }
             }
+        } catch (NumberFormatException ex) {
+            return 0;
         }
         if (movetime >= 0) {
             return movetime;

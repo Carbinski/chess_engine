@@ -16,6 +16,7 @@ from bots.midgame_v1 import MidGameBotV1
 from bots.midgame_v2 import MidGameBotV2
 from bots.midgame_v3 import MidGameBotV3
 from bots.midgame_v4 import MidGameBotV4
+from bots.midgame_v5 import MidGameBotV5
 from bots.minimal_v1 import MiniBotV1
 from bots.random_algo import RandomBot
 
@@ -31,8 +32,21 @@ BOTS = {
     "MidGameBotV2": MidGameBotV2,
     "MidGameBotV3": MidGameBotV3,
     "MidGameBotV4": MidGameBotV4,
+    "MidGameBotV5": MidGameBotV5,
     "MiniBotV1": MiniBotV1,
     "RandomBot": RandomBot,
+}
+
+_GO_VALUES = {
+    "wtime",
+    "btime",
+    "winc",
+    "binc",
+    "movetime",
+    "depth",
+    "nodes",
+    "mate",
+    "movestogo",
 }
 
 
@@ -42,6 +56,8 @@ def send(line):
 
 def apply_position(board, tokens):
     index = 1
+    if index >= len(tokens):
+        return
     if tokens[index] == "startpos":
         board.reset()
         index += 1
@@ -56,6 +72,55 @@ def apply_position(board, tokens):
     if index < len(tokens) and tokens[index] == "moves":
         for move in tokens[index + 1 :]:
             board.push_uci(move)
+
+
+def time_remaining_ms(board, tokens):
+    """Full clock for the side to move, in milliseconds. None if ``go`` has no clock."""
+    values = {}
+    index = 1
+    while index < len(tokens):
+        key = tokens[index]
+        if key in _GO_VALUES and index + 1 < len(tokens):
+            try:
+                values[key] = int(tokens[index + 1])
+            except ValueError:
+                return None
+            index += 2
+            continue
+        index += 1
+
+    if "movetime" in values:
+        return values["movetime"]
+    if board.turn == chess.WHITE and "wtime" in values:
+        return values["wtime"]
+    if board.turn == chess.BLACK and "btime" in values:
+        return values["btime"]
+    return None
+
+
+def first_legal(board):
+    for move in board.legal_moves:
+        return move
+    return None
+
+
+def choose_move(bot, board, remaining):
+    """Return a move, or None when the position has no legal move.
+
+    Only MidGameBotV5 spends the shared clock. The other bots keep their
+    fixed-depth search.
+    """
+    if not any(board.legal_moves):
+        return None
+
+    if isinstance(bot, MidGameBotV5):
+        move = bot.select_move(board, time_remaining_ms=remaining)
+    else:
+        move = bot.select_move(board)
+
+    if isinstance(move, chess.Move):
+        return move
+    return first_legal(board)
 
 
 def main():
@@ -80,17 +145,28 @@ def main():
         elif command == "isready":
             send("readyok")
         elif command == "ucinewgame":
+            bot = BOTS[bot_name]()
             board.reset()
         elif command == "position":
-            apply_position(board, tokens)
+            try:
+                apply_position(board, tokens)
+            except ValueError as exc:
+                print(f"Bad position: {exc}", file=sys.stderr)
         elif command == "go":
+            remaining = time_remaining_ms(board, tokens)
             saved = sys.stdout
             sys.stdout = sys.stderr
             try:
-                move = bot.select_move(board)
+                move = choose_move(bot, board, remaining)
+            except Exception as exc:
+                print(f"Search failed: {exc}", file=sys.stderr)
+                move = None
             finally:
                 sys.stdout = saved
-            send(f"bestmove {move.uci()}")
+            if isinstance(move, chess.Move):
+                send(f"bestmove {move.uci()}")
+            else:
+                send("bestmove 0000")
         elif command == "quit":
             break
 

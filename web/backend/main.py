@@ -1,11 +1,30 @@
+import sys
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from bot_manager import get_python_move, get_java_move
+from pydantic import BaseModel, Field
 
-app = FastAPI()
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-# Allow CORS for local development
+from crossplay.catalog import HUMAN, get, public_list
+from crossplay.live import GameManager
+from crossplay.uci_session import EngineError, UciSession
+
+manager = GameManager()
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    yield
+    manager.close_all()
+
+
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -14,52 +33,105 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class MoveRequest(BaseModel):
     fen: str
     botId: str
-    timeLimit: int = 5000 # Default 5 seconds
+    timeLimit: int = 5000
 
-@app.post("/move")
-def get_move(req: MoveRequest):
-    try:
-        print(f"Received request: {req}")
-        
-        if req.botId.startswith("python"):
-            move, time_taken, depth = get_python_move(req.fen, req.botId)
-        elif req.botId.startswith("java"):
-            move, time_taken, depth = get_java_move(req.fen, req.botId, req.timeLimit)
-        # Backward compatibility
-        elif req.botId == "python":
-             move, time_taken, depth = get_python_move(req.fen, "python_fast_v4")
-        elif req.botId == "java":
-             move, time_taken, depth = get_java_move(req.fen, "java_bot_v2", req.timeLimit)
-        else:
-            raise HTTPException(status_code=400, detail=f"Invalid botId: {req.botId}")
 
-        if move is None:
-             print("No move returned (Game Over or No Move)")
-             return {"move": None, "time": 0, "depth": 0}
-        
-        print(f"Returning move: {move} with time: {time_taken:.4f}s and depth: {depth}")
-        return {"move": move, "time": time_taken, "depth": depth}
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+class GameRequest(BaseModel):
+    white: str
+    black: str
+    initialMs: int = Field(default=60000, ge=200, le=60 * 60 * 1000)
+    incrementMs: int = Field(default=0, ge=0, le=60 * 1000)
+
+
+class HumanMove(BaseModel):
+    uci: str
+
+
+def _bad_engine(exc):
+    raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 
 @app.get("/bots")
 def list_bots():
-    return {
-        "bots": [
-            {"id": "python_random", "name": "Python: Random"},
-            {"id": "python_aggressive", "name": "Python: Aggressive"},
-            {"id": "python_dumb_eval", "name": "Python: DumbEval"},
-            {"id": "python_basic_search", "name": "Python: Basic Search"},
-            {"id": "python_fast_v2", "name": "Python: FastBotV2"},
-            {"id": "python_midgame_v1", "name": "Python: MidGameBotV1"},
-            {"id": "java_basic_v3", "name": "Java: BasicBot_V3"},
-            {"id": "java_fast_v2", "name": "Java: FastBot_V2"},
-            {"id": "java_bot_v2", "name": "Java: Bot_V2"},
-            {"id": "java_time_bot", "name": "Java: TimeBot_V1 (Time Controls)"},
-        ]
-    }
+    return {"bots": public_list()}
+
+
+@app.post("/games")
+def create_game(req: GameRequest):
+    try:
+        if req.white != HUMAN:
+            get(req.white)
+        if req.black != HUMAN:
+            get(req.black)
+        game = manager.create(req.white, req.black, req.initialMs, req.incrementMs)
+    except (ValueError, EngineError) as exc:
+        _bad_engine(exc)
+    return game.snapshot()
+
+
+@app.get("/games/{game_id}")
+def read_game(game_id: str):
+    try:
+        game = manager.get(game_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="game not found") from None
+    return game.snapshot()
+
+
+@app.post("/games/{game_id}/move")
+def play_move(game_id: str, req: HumanMove):
+    try:
+        game = manager.get(game_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="game not found") from None
+    try:
+        game.human_move(req.uci)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return game.snapshot()
+
+
+@app.delete("/games/{game_id}")
+def delete_game(game_id: str):
+    try:
+        manager.close(game_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="game not found") from None
+    return {"ok": True}
+
+
+@app.post("/move")
+def get_move(req: MoveRequest):
+    """One-shot UCI query kept for the older bot checker."""
+    try:
+        spec = get(req.botId)
+    except ValueError as exc:
+        _bad_engine(exc)
+    session = None
+    try:
+        session = UciSession(spec["command"], spec["name"])
+        session.new_game()
+        import time
+
+        started = time.perf_counter()
+        move, _extras = session.go(
+            req.fen,
+            req.timeLimit,
+            req.timeLimit,
+            0,
+            0,
+            timeout=req.timeLimit / 1000 + 5,
+        )
+        elapsed = time.perf_counter() - started
+    except EngineError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        if session is not None:
+            session.close()
+    if move == "0000":
+        return {"move": None, "time": elapsed, "depth": 0}
+    return {"move": move, "time": elapsed, "depth": 0}
