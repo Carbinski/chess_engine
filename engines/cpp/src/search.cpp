@@ -75,6 +75,7 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
     tt_hits_ = 0;
     tt_cutoffs_ = 0;
     first_cutoffs_ = 0;
+    move_ordering_.clear();
 
     Movelist moves;
     movegen::legalmoves(moves, board);
@@ -86,14 +87,15 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
         best_move = moves[0];
         const bool white_to_move = board.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
-            MoveOrdering{}.order_moves(moves, best_move, board);
+            move_ordering_.order_moves(moves, best_move, board);
 
             int best_eval = worst_eval(white_to_move);
             int alpha = -checkmate_score;
             int beta = checkmate_score;
             Move iteration_best = best_move;
 
-            for (const auto& move : moves) {
+            for (int i = 0; i < moves.size(); ++i) {
+                const Move& move = moves[i];
                 if (check_time_expired()) {
                     break;
                 }
@@ -110,9 +112,10 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
                     if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
                         (white_to_move ? alpha : beta) = eval;
                         if (beta <= alpha) {
-                            if (move == moves[0]) {
+                            if (i == 0) {
                                 ++first_cutoffs_;
                             }
+                            move_ordering_.record_cutoff(board, moves, i, depth);
                             break;
                         }
                     }
@@ -175,7 +178,7 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     if (moves.empty()) {
         return evaluate(board);
     }
-    MoveOrdering{}.order_moves(moves, hash_move, board);
+    move_ordering_.order_moves(moves, hash_move, board);
 
     const int original_alpha = alpha;
     const int original_beta = beta;
@@ -184,7 +187,8 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     Move best_move = Move::NO_MOVE;
     Board position = board;
 
-    for (const auto& move : moves) {
+    for (int i = 0; i < moves.size(); ++i) {
+        const Move& move = moves[i];
         position.makeMove(move);
         const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
         position.unmakeMove(move);
@@ -198,9 +202,10 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
             if (eval_is_better(white_to_move, eval, white_to_move ? alpha : beta)) {
                 (white_to_move ? alpha : beta) = eval;
                 if (beta <= alpha) {
-                    if (move == moves[0]) {
+                    if (i == 0) {
                         ++first_cutoffs_;
                     }
+                    move_ordering_.record_cutoff(board, moves, i, depth);
                     break;
                 }
             }

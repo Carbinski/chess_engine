@@ -1,6 +1,7 @@
 #pragma once
 
 #include "chess.hpp"
+#include "move_ordering.hpp"
 #include "transposition.hpp"
 
 #include <cstdint>
@@ -35,4 +36,5 @@ private:
     std::uint64_t tt_cutoffs_ = 0;
     std::uint64_t first_cutoffs_ = 0;
     Transposition transposition_table_;
+    MoveOrdering move_ordering_;
 };
