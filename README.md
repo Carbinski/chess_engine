@@ -13,3 +13,27 @@ Python and Java engines are already here. The C++ engine will live in `engines/c
 - `experiments` — early sketches
 
 The Python code uses the [chess](https://python-chess.readthedocs.io/) library. The Java project uses [chesslib](https://github.com/bhlangonijr/chesslib).
+
+## Cross-play
+
+Python, Java, and the C++ binary all speak UCI. `python -m crossplay` is the referee: it owns the clock and the result, and either color can be any engine in `engines/catalog.json`. `MidGameBotV5` and `Bot_V5` are the Python and Java engines that spend the same think time as the C++ engine, `remaining / 75` milliseconds. The other bots keep their own search. Increment is awarded by the referee.
+
+```bash
+python -m pip install -r requirements.txt
+mvn -f engines/java/pom.xml -q compile
+python -m crossplay list
+python -m crossplay conform
+python -m crossplay match python_midgame_v5 java_bot_v5 --time 10000 --inc 100
+```
+
+`--time` and `--inc` are milliseconds. `roundrobin` alternates colors for each pair. `fastchess` prints a command for `tools/fastchess` when that runner is built; it does not ship in this tree.
+
+The C++ engine is optional. Build `engines/cpp` when its headers are present. The catalog uses `engines/cpp/build/chess_engine` as-is.
+
+The web UI uses the same catalog. From the repo root:
+
+```bash
+python -m uvicorn web.backend.main:app --host 127.0.0.1 --port 8000
+```
+
+In `web/frontend`, run `npm run dev` and open the page. Each color can be Human or any available engine.
