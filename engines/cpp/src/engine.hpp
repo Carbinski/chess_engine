@@ -23,5 +23,5 @@ public:
     std::string_view name() const override;
 
 private:
-    Eldritch search_;
+    Freya search_;
 };

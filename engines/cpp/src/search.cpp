@@ -48,9 +48,9 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-Eldritch::Eldritch() {}
+Freya::Freya() {}
 
-bool Eldritch::check_time_expired() {
+bool Freya::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
@@ -62,7 +62,7 @@ bool Eldritch::check_time_expired() {
     return out_of_time_;
 }
 
-chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Freya::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -70,17 +70,19 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
     counters_.nodes = 1;  // root; search() counts every position below it
     move_ordering_.clear();
 
+    Board position = board;
+
     Movelist moves;
-    movegen::legalmoves(moves, board);
+    movegen::legalmoves(moves, position);
 
     Move best_move = Move::NO_MOVE;
     std::optional<int> committed_eval;
     int depth_completed = 0;
     if (!moves.empty()) {
         best_move = moves[0];
-        const bool white_to_move = board.sideToMove() == Color::WHITE;
+        const bool white_to_move = position.sideToMove() == Color::WHITE;
         for (int depth = 1; ; ++depth) {
-            move_ordering_.order_moves(moves, best_move, board);
+            move_ordering_.order_moves(moves, best_move, position);
 
             int best_eval = worst_eval(white_to_move);
             int alpha = -checkmate_score;
@@ -93,9 +95,9 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
                     break;
                 }
 
-                board.makeMove(move);
-                const int eval = with_mate_distance(search(board, depth - 1, alpha, beta));
-                board.unmakeMove(move);
+                position.makeMove(move);
+                const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
+                position.unmakeMove(move);
                 if (out_of_time_) {
                     break;
                 }
@@ -108,7 +110,7 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
                             if (i == 0) {
                                 ++counters_.first_cutoffs;
                             }
-                            move_ordering_.record_cutoff(board, moves, i, depth);
+                            move_ordering_.record_cutoff(position, moves, i, depth);
                             break;
                         }
                     }
@@ -137,7 +139,7 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
     return best_move;
 }
 
-int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
+int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
     ++counters_.nodes;
     if (check_time_expired()) {
         return 0;
@@ -182,7 +184,7 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     for (int i = 0; i < moves.size(); ++i) {
         const Move& move = moves[i];
         board.makeMove(move);
-        const int eval = with_mate_distance(search(positboardion, depth - 1, alpha, beta));
+        const int eval = with_mate_distance(search(board, depth - 1, alpha, beta));
         board.unmakeMove(move);
         if (out_of_time_) {
             return 0;
@@ -217,6 +219,6 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     return best_eval;
 }
 
-std::string_view Eldritch::name() const {
-    return "Eldritch";
+std::string_view Freya::name() const {
+    return "Freya";
 }
