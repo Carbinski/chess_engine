@@ -93,9 +93,9 @@ chess::Move Eldritch::select_move(const chess::Board& board, std::optional<int> 
                     break;
                 }
 
-                Board position = board;
-                position.makeMove(move);
-                const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
+                board.makeMove(move);
+                const int eval = with_mate_distance(search(board, depth - 1, alpha, beta));
+                board.unmakeMove(move);
                 if (out_of_time_) {
                     break;
                 }
@@ -178,13 +178,12 @@ int Eldritch::search(chess::Board& board, int depth, int alpha, int beta) {
     const bool white_to_move = board.sideToMove() == Color::WHITE;
     int best_eval = worst_eval(white_to_move);
     Move best_move = Move::NO_MOVE;
-    Board position = board;
 
     for (int i = 0; i < moves.size(); ++i) {
         const Move& move = moves[i];
-        position.makeMove(move);
-        const int eval = with_mate_distance(search(position, depth - 1, alpha, beta));
-        position.unmakeMove(move);
+        board.makeMove(move);
+        const int eval = with_mate_distance(search(positboardion, depth - 1, alpha, beta));
+        board.unmakeMove(move);
         if (out_of_time_) {
             return 0;
         }
