@@ -54,6 +54,11 @@ bool Freya::check_time_expired() {
     if (out_of_time_) {
         return true;
     }
+
+    if (counters_.nodes % 2048 != 0) {
+        return false;
+    }
+
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - start_).count();
     if (elapsed >= budget_ms_) {
