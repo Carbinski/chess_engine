@@ -5,24 +5,48 @@
 
 #include <cstdint>
 #include <cstring>
+#include <optional>
 
 class MoveOrdering {
 public:
+    class Picker {
+    public:
+        std::optional<chess::Move> next();
+
+    private:
+        friend class MoveOrdering;
+
+        Picker(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board,
+               const MoveOrdering& ordering);
+
+        chess::Move previous_best_ = chess::Move::NO_MOVE;
+        int previous_best_index_ = -1;
+        bool yield_previous_best_ = false;
+        
+        bool is_loud_sorted_ = false;
+        chess::Movelist loud_;
+        int loud_index_ = 0;
+        
+        bool is_quiet_sorted_ = false;
+        chess::Movelist quiet_;
+        int quiet_index_ = 0;
+
+        chess::Movelist tried_;
+    };
+
     void clear() {
         std::memset(history_, 0, sizeof(history_));
     }
 
-    void order_moves(chess::Movelist& moves, chess::Move best, const chess::Board& board);
-    void record_cutoff(const chess::Board& board, const chess::Movelist& moves, int cutoff_index, int depth);
+    Picker pick(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board) const;
+    void record_cutoff(const chess::Board& board, const Picker& picker, int depth);
 
 private:
-    struct ScoreBands {
-        static constexpr int history_max = 12'000;
-        static constexpr std::int16_t capture_base = 14'000;
-        static constexpr std::int16_t prev_best = 0x7FFF;
-    };
+    static constexpr int history_max = 12'000;
 
     int history_[2][64][64]{};
+
+    static int loud_score(const chess::Board& board, chess::Move move);
 
     static bool is_quiet(const chess::Board& board, chess::Move move) {
         if (move.typeOf() == chess::Move::PROMOTION || move.typeOf() == chess::Move::ENPASSANT) {

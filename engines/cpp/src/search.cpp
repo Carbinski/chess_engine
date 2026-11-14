@@ -73,11 +73,15 @@ chess::Move Freya::select_move(const chess::Board& board, std::optional<int> tim
     int depth_completed = 0;
     const bool white_to_move = position.sideToMove() == Color::WHITE;
     for (int depth = 1; ; ++depth) {
-        move_ordering_.order_moves(moves, best_move, position);
+        MoveOrdering::Picker picker = move_ordering_.pick(moves, best_move, position);
         Ply ply = Ply::start(white_to_move, -checkmate_score, checkmate_score, best_move);
 
-        for (int i = 0; i < moves.size(); ++i) {
-            const Move& move = moves[i];
+        for (int tried = 0;; ++tried) {
+            const std::optional<Move> picked = picker.next();
+            if (!picked) {
+                break;
+            }
+            const Move move = *picked;
             if (check_time_expired()) {
                 break;
             }
@@ -91,10 +95,10 @@ chess::Move Freya::select_move(const chess::Board& board, std::optional<int> tim
             ply.apply_eval(eval, move);
             const Ply::Result result = ply.result();
             if (result == Ply::Result::Cutoff) {
-                if (i == 0) {
+                if (tried == 0) {
                     ++counters_.first_cutoffs;
                 }
-                move_ordering_.record_cutoff(position, moves, i, depth);
+                move_ordering_.record_cutoff(position, picker, depth);
                 break;
             }
             if (result == Ply::Result::Mate) {
@@ -138,11 +142,15 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
     const TtHit hit = probe_tt(hash, depth, alpha, beta);
     if (hit.cutoff) return *hit.cutoff;
 
-    move_ordering_.order_moves(moves, hit.hash_move, board);
+    MoveOrdering::Picker picker = move_ordering_.pick(moves, hit.hash_move, board);
 
     Ply ply = Ply::start(board.sideToMove() == Color::WHITE, alpha, beta);
-    for (int i = 0; i < moves.size(); ++i) {
-        const Move& move = moves[i];
+    for (int tried = 0;; ++tried) {
+        const std::optional<Move> picked = picker.next();
+        if (!picked) {
+            break;
+        }
+        const Move move = *picked;
         board.makeMove(move);
         const int eval = with_mate_distance(search(board, depth - 1, ply.alpha, ply.beta));
         board.unmakeMove(move);
@@ -152,10 +160,10 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
         ply.apply_eval(eval, move);
         const Ply::Result result = ply.result();
         if (result == Ply::Result::Cutoff) {
-            if (i == 0) {
+            if (tried == 0) {
                 ++counters_.first_cutoffs;
             }
-            move_ordering_.record_cutoff(board, moves, i, depth);
+            move_ordering_.record_cutoff(board, picker, depth);
             break;
         }
         if (result == Ply::Result::Mate) {
