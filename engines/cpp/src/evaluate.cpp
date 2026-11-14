@@ -47,14 +47,25 @@ int score_piece(const chess::Board& board, chess::PieceType type, const int tabl
 
 int evaluate(const chess::Board& board) {
     const int phase = game_phase(board);
+    
+    const int pawn_midgame = score_piece(board, chess::PieceType::PAWN, piece_square_weights.pawn_midgame);
+    const int pawn_endgame = score_piece(board, chess::PieceType::PAWN, piece_square_weights.pawn_endgame);
+    const int knight_midgame = score_piece(board, chess::PieceType::KNIGHT, piece_square_weights.knight_midgame);
+    const int knight_endgame = score_piece(board, chess::PieceType::KNIGHT, piece_square_weights.knight_endgame);
+    const int bishop_midgame = score_piece(board, chess::PieceType::BISHOP, piece_square_weights.bishop_midgame);
+    const int bishop_endgame = score_piece(board, chess::PieceType::BISHOP, piece_square_weights.bishop_endgame);
+    const int rook_midgame = score_piece(board, chess::PieceType::ROOK, piece_square_weights.rook_midgame);
+    const int rook_endgame = score_piece(board, chess::PieceType::ROOK, piece_square_weights.rook_endgame);
+    const int queen_midgame = score_piece(board, chess::PieceType::QUEEN, piece_square_weights.queen_midgame);
+    const int queen_endgame = score_piece(board, chess::PieceType::QUEEN, piece_square_weights.queen_endgame);
     const int king_midgame = score_piece(board, chess::PieceType::KING, piece_square_weights.king_midgame);
     const int king_endgame = score_piece(board, chess::PieceType::KING, piece_square_weights.king_endgame);
 
-    return score_piece(board, chess::PieceType::PAWN, piece_square_weights.pawn)
-        + score_piece(board, chess::PieceType::KNIGHT, piece_square_weights.knight)
-        + score_piece(board, chess::PieceType::BISHOP, piece_square_weights.bishop)
-        + score_piece(board, chess::PieceType::ROOK, piece_square_weights.rook)
-        + score_piece(board, chess::PieceType::QUEEN, piece_square_weights.queen)
+    return interpolate(pawn_midgame, pawn_endgame, phase)
+        + interpolate(knight_midgame, knight_endgame, phase)
+        + interpolate(bishop_midgame, bishop_endgame, phase)
+        + interpolate(rook_midgame, rook_endgame, phase)
+        + interpolate(queen_midgame, queen_endgame, phase)
         + interpolate(king_midgame, king_endgame, phase);
 }
 
