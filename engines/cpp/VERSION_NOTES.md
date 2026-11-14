@@ -28,3 +28,14 @@ Fixes stalemate bug with freya-v2.
 ## freya-v7
 
 About 15% faster than freya-v5. Move ordering tries the previous best move first, then sorts captures, and sorts quiet moves only if search reaches them.
+
+Profiled for 20 seconds from `startpos moves e2e4 e7e5 g1f3 b8c6 f1b5 a7a6 b5a4 g8f6`. The engine played d2d3 after 171,663,360 nodes, 8.6 million per second:
+
+| Share | Where the time goes |
+|---:|---|
+| 33.7% | Search. Mostly the move picker scoring every legal move before the first try. |
+| 17.7% | Movegen. |
+| 16.7% | Make and unmake. Piece and hash updates. |
+| 15.9% | Evaluate. About 12 points are the static evaluation. The rest is `piece_value` while scoring captures. |
+| 8.0% | Move ordering sort. Quiet moves are sorted only when search reaches them. |
+| 6.7% | Transposition. |
