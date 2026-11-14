@@ -20,7 +20,11 @@ About 7% faster than freya-v2. The clock is checked every 2048 nodes. A stalemat
 
 About 3% faster than freya-v3. Release builds use `-march=native` and link-time optimization. A stalemate at depth 0 is still scored as a normal position.
 
-
 ## freya-v5
 
-Fixes stalemate bug with freya-v2
+Fixes stalemate bug with freya-v2.
+
+
+## freya-v7
+
+About 15% faster than freya-v5. Move ordering tries the previous best move first, then sorts captures, and sorts quiet moves only if search reaches them.
