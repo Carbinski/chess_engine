@@ -32,8 +32,15 @@ public:
     std::string_view name() const override;
 
 private:
+    struct TtHit {
+        chess::Move hash_move = chess::Move::NO_MOVE;
+        std::optional<int> cutoff;
+    };
+
     int search(chess::Board& board, int depth, int alpha, int beta);
     bool check_time_expired();
+    TtHit probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta);
+    void store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best);
 
     std::chrono::steady_clock::time_point start_{};
     int budget_ms_ = 0;

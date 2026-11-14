@@ -13,6 +13,16 @@ enum class Bound : std::uint8_t {
     Upper,  // score <= alpha; the real score is at most this
 };
 
+inline Bound bound_of(int score, int alpha, int beta) {
+    if (score <= alpha) {
+        return Bound::Upper;
+    }
+    if (score >= beta) {
+        return Bound::Lower;
+    }
+    return Bound::Exact;
+}
+
 struct Entry {
     std::uint64_t key = 0;
     int depth = 0;
