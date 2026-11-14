@@ -95,5 +95,7 @@ inline PieceValues piece_values;
 inline PieceSquareWeights piece_square_weights;
 
 int evaluate(const chess::Board& board);
-int evaluate_game_over(const chess::Board& board);
+bool is_insufficient_material(const chess::Board& board);
+bool is_path_draw(const chess::Board& board);
+int mate_or_stalemate(const chess::Board& board);
 

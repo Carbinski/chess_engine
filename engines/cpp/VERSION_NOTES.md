@@ -19,3 +19,8 @@ About 7% faster than freya-v2. The clock is checked every 2048 nodes. A stalemat
 ## freya-v4
 
 About 3% faster than freya-v3. Release builds use `-march=native` and link-time optimization. A stalemate at depth 0 is still scored as a normal position.
+
+
+## freya-v5
+
+Fixes stalemate bug with freya-v2

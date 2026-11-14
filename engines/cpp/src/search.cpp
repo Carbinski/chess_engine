@@ -149,8 +149,23 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
     if (check_time_expired()) {
         return 0;
     }
+    if (is_insufficient_material(board)) {
+        return 0;
+    }
     if (depth == 0) {
+        if (is_path_draw(board)) {
+            return 0;
+        }
         return evaluate(board);
+    }
+
+    Movelist moves;
+    movegen::legalmoves(moves, board);
+    if (moves.empty()) {
+        return mate_or_stalemate(board);
+    }
+    if (is_path_draw(board)) {
+        return 0;
     }
 
     const std::uint64_t hash = board.hash();
@@ -173,11 +188,6 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
         }
     }
 
-    Movelist moves;
-    movegen::legalmoves(moves, board);
-    if (moves.empty()) {
-        return evaluate_game_over(board);
-    }
     move_ordering_.order_moves(moves, hash_move, board);
 
     const int original_alpha = alpha;

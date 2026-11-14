@@ -58,12 +58,17 @@ int evaluate(const chess::Board& board) {
         + interpolate(king_midgame, king_endgame, phase);
 }
 
-int evaluate_game_over(const chess::Board& board) {
-    const auto result = board.isGameOver().second;
-    if (result == chess::GameResult::LOSE) {
+bool is_insufficient_material(const chess::Board& board) {
+    return board.isInsufficientMaterial();
+}
+
+bool is_path_draw(const chess::Board& board) {
+    return board.isHalfMoveDraw() || board.isRepetition();
+}
+
+int mate_or_stalemate(const chess::Board& board) {
+    if (board.inCheck()) {
         return board.sideToMove() == chess::Color::WHITE ? -checkmate_score : checkmate_score;
     }
-    if (result == chess::GameResult::DRAW) {
-        return 0;
-    }
+    return 0;
 }
