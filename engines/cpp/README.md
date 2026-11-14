@@ -45,7 +45,7 @@ Each major version gets a magic-themed name, and the first letter continues in a
 
 ### Freeze a version
 
-From the repo root, with a clean tree:
+From the repo root, with a clean tree. A Release build is `-O3 -DNDEBUG -march=native` with link-time optimization. Those flags come from `CMakeLists.txt`.
 
 ```bash
 git tag cpp-v1
@@ -60,13 +60,18 @@ To rebuild a binary you deleted:
 
 ```bash
 git worktree add /tmp/cpp-v1 cpp-v1
-cmake -S /tmp/cpp-v1/engines/cpp -B /tmp/cpp-v1/engines/cpp/build -DCMAKE_BUILD_TYPE=Release
+cmake -S /tmp/cpp-v1/engines/cpp -B /tmp/cpp-v1/engines/cpp/build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS_RELEASE="-O3 -DNDEBUG -march=native" \
+  -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
 cmake --build /tmp/cpp-v1/engines/cpp/build
 cp /tmp/cpp-v1/engines/cpp/build/chess_engine engines/cpp/releases/cpp-v1
 git worktree remove /tmp/cpp-v1
 ```
 
-A worktree builds the old tag without switching your current checkout.
+A worktree builds the old tag without switching your current checkout. That tag's `CMakeLists.txt` does not set `-march=native` or LTO, so the configure line passes them. `-DCMAKE_CXX_FLAGS_RELEASE` replaces the default Release flags, which is why `-O3 -DNDEBUG` stays in the string.
+
+A binary already in `engines/cpp/releases/` was built without these flags. A fair match against a newly frozen engine requires rebuilding that tag this way.
 
 ### Binary contract
 
