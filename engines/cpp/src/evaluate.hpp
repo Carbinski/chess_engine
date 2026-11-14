@@ -95,4 +95,5 @@ inline PieceValues piece_values;
 inline PieceSquareWeights piece_square_weights;
 
 int evaluate(const chess::Board& board);
+int evaluate_game_over(const chess::Board& board);
 

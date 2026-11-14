@@ -171,7 +171,7 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
     Movelist moves;
     movegen::legalmoves(moves, board);
     if (moves.empty()) {
-        return evaluate(board);
+        return evaluate_game_over(board);
     }
     move_ordering_.order_moves(moves, hash_move, board);
 

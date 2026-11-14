@@ -46,14 +46,6 @@ int score_piece(const chess::Board& board, chess::PieceType type, const int tabl
 }
 
 int evaluate(const chess::Board& board) {
-    const auto result = board.isGameOver().second;
-    if (result == chess::GameResult::LOSE) {
-        return board.sideToMove() == chess::Color::WHITE ? -checkmate_score : checkmate_score;
-    }
-    if (result == chess::GameResult::DRAW) {
-        return 0;
-    }
-
     const int phase = game_phase(board);
     const int king_midgame = score_piece(board, chess::PieceType::KING, piece_square_weights.king_midgame);
     const int king_endgame = score_piece(board, chess::PieceType::KING, piece_square_weights.king_endgame);
@@ -64,4 +56,14 @@ int evaluate(const chess::Board& board) {
         + score_piece(board, chess::PieceType::ROOK, piece_square_weights.rook)
         + score_piece(board, chess::PieceType::QUEEN, piece_square_weights.queen)
         + interpolate(king_midgame, king_endgame, phase);
+}
+
+int evaluate_game_over(const chess::Board& board) {
+    const auto result = board.isGameOver().second;
+    if (result == chess::GameResult::LOSE) {
+        return board.sideToMove() == chess::Color::WHITE ? -checkmate_score : checkmate_score;
+    }
+    if (result == chess::GameResult::DRAW) {
+        return 0;
+    }
 }
