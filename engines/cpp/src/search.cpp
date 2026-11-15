@@ -48,9 +48,9 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-Freya::Freya() {}
+Ganymede::Ganymede() {}
 
-chess::Move Freya::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Ganymede::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -124,7 +124,7 @@ chess::Move Freya::select_move(const chess::Board& board, std::optional<int> tim
     return best_move;
 }
 
-int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
+int Ganymede::search(chess::Board& board, int depth, int alpha, int beta) {
     ++counters_.nodes;
     if (check_time_expired()) return 0;
     if (is_insufficient_material(board)) return 0;
@@ -175,7 +175,7 @@ int Freya::search(chess::Board& board, int depth, int alpha, int beta) {
     return ply.best_eval;
 }
 
-bool Freya::check_time_expired() {
+bool Ganymede::check_time_expired() {
     if (out_of_time_) return true;
     if (counters_.nodes % 2048 != 0) return false;
 
@@ -187,7 +187,7 @@ bool Freya::check_time_expired() {
     return out_of_time_;
 }
 
-Freya::TtHit Freya::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
+Ganymede::TtHit Ganymede::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
     TtHit hit;
     ++counters_.tt_probes;
     if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
@@ -211,10 +211,10 @@ Freya::TtHit Freya::probe_tt(std::uint64_t hash, int depth, int& alpha, int& bet
     return hit;
 }
 
-void Freya::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
+void Ganymede::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
     transposition_table_.store_position(Entry{hash, depth, score, bound_of(score, alpha, beta), best});
 }
 
-std::string_view Freya::name() const {
-    return "Freya";
+std::string_view Ganymede::name() const {
+    return "Ganymede";
 }
