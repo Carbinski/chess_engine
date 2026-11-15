@@ -59,6 +59,7 @@ chess::Move Ganymede::select_move(const chess::Board& board, std::optional<int> 
     move_ordering_.clear();
 
     Board position = board;
+    set_evaluation(position);
 
     Movelist moves;
     movegen::legalmoves(moves, position);
@@ -86,9 +87,11 @@ chess::Move Ganymede::select_move(const chess::Board& board, std::optional<int> 
                 break;
             }
 
+            make_move(position, move);
             position.makeMove(move);
             const int eval = with_mate_distance(search(position, depth - 1, ply.alpha, ply.beta));
             position.unmakeMove(move);
+            unmake_move(move);
             if (out_of_time_) {
                 break;
             }
@@ -151,9 +154,11 @@ int Ganymede::search(chess::Board& board, int depth, int alpha, int beta) {
             break;
         }
         const Move move = *picked;
+        make_move(board, move);
         board.makeMove(move);
         const int eval = with_mate_distance(search(board, depth - 1, ply.alpha, ply.beta));
         board.unmakeMove(move);
+        unmake_move(move);
         if (out_of_time_) {
             return 0;
         }
