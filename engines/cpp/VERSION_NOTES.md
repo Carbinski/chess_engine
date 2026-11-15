@@ -39,3 +39,11 @@ Profiled for 20 seconds from `startpos moves e2e4 e7e5 g1f3 b8c6 f1b5 a7a6 b5a4 
 | 15.9% | Evaluate. About 12 points are the static evaluation. The rest is `piece_value` while scoring captures. |
 | 8.0% | Move ordering sort. Quiet moves are sorted only when search reaches them. |
 | 6.7% | Transposition. |
+
+## ganymede-v1
+
+About 30 Elo stronger than freya-v7 (+30 ± 18 over 1,001 games). Every piece has separate midgame and endgame square weights, taken from the PeSTO evaluation. The score blends the two by game phase.
+
+## ganymede-v2
+
+Search keeps a running midgame, endgame, and material total and updates it when a move is made or unmade. A leaf score blends that total by game phase, the same blend as ganymede-v1.
