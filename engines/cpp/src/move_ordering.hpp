@@ -19,14 +19,20 @@ public:
         Picker(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board,
                const MoveOrdering& ordering);
 
+        void score_loud();
+        void score_quiet();
+
+        chess::Movelist& moves_;
+        const chess::Board& board_;
+        const MoveOrdering& ordering_;
+
         chess::Move previous_best_ = chess::Move::NO_MOVE;
-        int previous_best_index_ = -1;
         bool yield_previous_best_ = false;
-        
+
         bool is_loud_sorted_ = false;
         chess::Movelist loud_;
         int loud_index_ = 0;
-        
+
         bool is_quiet_sorted_ = false;
         chess::Movelist quiet_;
         int quiet_index_ = 0;

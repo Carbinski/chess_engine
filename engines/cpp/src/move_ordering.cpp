@@ -18,22 +18,48 @@ MoveOrdering::Picker MoveOrdering::pick(chess::Movelist& moves, chess::Move prev
     return Picker(moves, previous_best, board, *this);
 }
 
-MoveOrdering::Picker::Picker(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board, const MoveOrdering& ordering) {
-    const int side = side_index(board.sideToMove());
+MoveOrdering::Picker::Picker(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board, const MoveOrdering& ordering)
+    : moves_(moves), board_(board), ordering_(ordering) {
+    if (previous_best == chess::Move::NO_MOVE) {
+        return;
+    }
     for (int i = 0; i < moves.size(); ++i) {
-        chess::Move move = moves[i];
-        if (previous_best != chess::Move::NO_MOVE && move == previous_best) {
-            previous_best_ = move;
+        if (moves[i] == previous_best) {
+            previous_best_ = moves[i];
             yield_previous_best_ = true;
-            previous_best_index_ = i;
+            return;
         }
-        else if (is_quiet(board, move)) {
-            move.setScore(static_cast<std::int16_t>(ordering.history_[side][move.from().index()][move.to().index()]));
-            quiet_.add(move);
-        } else {
-            move.setScore(static_cast<std::int16_t>(loud_score(board, move)));
-            loud_.add(move);
+    }
+}
+
+void MoveOrdering::Picker::score_loud() {
+    const bool has_best = previous_best_ != chess::Move::NO_MOVE;
+    for (int i = 0; i < moves_.size(); ++i) {
+        chess::Move move = moves_[i];
+        if (has_best && move == previous_best_) {
+            continue;
         }
+        if (is_quiet(board_, move)) {
+            continue;
+        }
+        move.setScore(static_cast<std::int16_t>(loud_score(board_, move)));
+        loud_.add(move);
+    }
+}
+
+void MoveOrdering::Picker::score_quiet() {
+    const int side = side_index(board_.sideToMove());
+    const bool has_best = previous_best_ != chess::Move::NO_MOVE;
+    for (int i = 0; i < moves_.size(); ++i) {
+        chess::Move move = moves_[i];
+        if (has_best && move == previous_best_) {
+            continue;
+        }
+        if (!is_quiet(board_, move)) {
+            continue;
+        }
+        move.setScore(static_cast<std::int16_t>(ordering_.history_[side][move.from().index()][move.to().index()]));
+        quiet_.add(move);
     }
 }
 
@@ -42,18 +68,24 @@ std::optional<chess::Move> MoveOrdering::Picker::next() {
     if (yield_previous_best_) {
         yield_previous_best_ = false;
         move = previous_best_;
-    } else if (loud_index_ < loud_.size()) {
+    } else {
         if (!is_loud_sorted_) {
+            score_loud();
             sort(loud_);
             is_loud_sorted_ = true;
         }
-        move = loud_[loud_index_++];
-    } else if (quiet_index_ < quiet_.size()) {
-        if (!is_quiet_sorted_) {
-            sort(quiet_);
-            is_quiet_sorted_ = true;
+        if (loud_index_ < loud_.size()) {
+            move = loud_[loud_index_++];
+        } else {
+            if (!is_quiet_sorted_) {
+                score_quiet();
+                sort(quiet_);
+                is_quiet_sorted_ = true;
+            }
+            if (quiet_index_ < quiet_.size()) {
+                move = quiet_[quiet_index_++];
+            }
         }
-        move = quiet_[quiet_index_++];
     }
 
     if (move) {
