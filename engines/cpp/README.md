@@ -14,34 +14,34 @@ Each major version gets a magic-themed name, and the first letter continues in a
 
 `arcane`, `black-magic`, and `cantrip` are already in use. A spare is an unused alternative for that letter.
 
-| Letter | Name | Spare |
-| --- | --- | --- |
-| A | `arcane` | — |
-| B | `black-magic` | — |
-| C | `cantrip` | — |
-| D | `dumbledore` | — |
-| E | `eldritch` | `evocation` |
-| F | `freya` | — |
-| G | `grimoire` | `glamour` |
-| H | `helios` | — |
-| I | `icarus` | — |
-| J | `jinx` | — |
-| K | `kalliope` | — |
-| L | `labyrinth` | — |
-| M | `mage` | — |
-| N | `necromancer` | — |
-| O | `oracle` | `omen` |
-| P | `philosopher` | — |
-| Q | `Quetzalcoatl` | — |
-| R | `rune` | `ritual` |
-| S | `sigil` | `scrying` |
-| T | `talisman` | `thaumaturgy` |
-| U | `umbra` | `unction` |
-| V | `veil` | `vatic` |
-| W | `warloc` | — |
-| X | `xylomancy` | `xenoglossy` |
-| Y | `yarrow` | `yew` |
-| Z | `zodiac` | `zener` |
+| Letter | Name           | Spare         |
+| ------ | -------------- | ------------- |
+| A      | `arcane`       | —             |
+| B      | `black-magic`  | —             |
+| C      | `cantrip`      | —             |
+| D      | `dumbledore`   | —             |
+| E      | `eldritch`     | `evocation`   |
+| F      | `freya`        | —             |
+| G      | `ganymede`     | `grimoire`    |
+| H      | `helios`       | —             |
+| I      | `icarus`       | —             |
+| J      | `jinx`         | —             |
+| K      | `kalliope`     | —             |
+| L      | `labyrinth`    | —             |
+| M      | `mage`         | —             |
+| N      | `necromancer`  | —             |
+| O      | `oracle`       | `omen`        |
+| P      | `philosopher`  | —             |
+| Q      | `quetzalcoatl` | —             |
+| R      | `rune`         | `ritual`      |
+| S      | `sigil`        | `scrying`     |
+| T      | `talisman`     | `thaumaturgy` |
+| U      | `umbra`        | `unction`     |
+| V      | `veil`         | `vatic`       |
+| W      | `warloc`       | —             |
+| X      | `xylomancy`    | `xenoglossy`  |
+| Y      | `yarrow`       | `yew`         |
+| Z      | `zodiac`       | `zener`       |
 
 ### Freeze a version
 
