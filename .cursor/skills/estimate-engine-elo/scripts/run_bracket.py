@@ -44,7 +44,19 @@ def repo_root() -> Path:
 
 
 def book_lines() -> int:
+    if not BOOK.is_file():
+        raise SystemExit(f"opening book not found: {BOOK}")
     return sum(1 for line in BOOK.read_text().splitlines() if line.strip() and not line.startswith("#"))
+
+
+def scored_games(pgn: Path) -> list[dict]:
+    kept = []
+    for game in fit_elo.load_games([pgn]):
+        termination = game.get("Termination")
+        if termination and termination not in fit_elo.SCORED:
+            continue
+        kept.append(game)
+    return kept
 
 
 def run(cmd: list[str], **kwargs) -> None:
@@ -141,19 +153,8 @@ def play_match(
         "-recover",
     ]
     print(f"\n== {engine_name} vs {opponent_name}  rounds={rounds} (x2 colors) ==", flush=True)
-    with log.open("w") as handle:
-        proc = subprocess.run(cmd, stdout=handle, stderr=subprocess.STDOUT)
-    if proc.returncode != 0:
-        tail = log.read_text(errors="replace").splitlines()[-40:]
-        print("\n".join(tail), file=sys.stderr)
-        raise SystemExit(f"fastchess exited {proc.returncode}; log: {log}")
-    games = fit_elo.load_games([pgn])
-    expected = rounds * 2
-    if len(games) != expected:
-        raise SystemExit(f"{pgn} has {len(games)} games, expected {expected}. Log: {log}")
-    bad = [game.get("Termination") for game in games if game.get("Termination") not in fit_elo.SCORED]
-    if bad:
-        raise SystemExit(f"{pgn} has unscored terminations {bad}. The opponent may have crashed. Log: {log}")
+    run_fastchess(cmd, log, pgn.parent.parent)
+    games = finished_games(pgn, rounds * 2, log)
     points = 0.0
     for game in games:
         score = fit_elo.player_score(game, engine_name)
@@ -161,6 +162,27 @@ def play_match(
             raise SystemExit(f"{engine_name} did not play in {pgn}")
         points += score
     print(f"   {points:.1f}/{len(games)} ({100.0 * points / len(games):.1f}%)", flush=True)
+
+
+def run_fastchess(cmd: list[str], log: Path, cwd: Path) -> None:
+    # fastchess writes config.json to its working directory. Keep that in the
+    # run directory rather than the repo checkout.
+    with log.open("w") as handle:
+        proc = subprocess.run(cmd, stdout=handle, stderr=subprocess.STDOUT, cwd=cwd)
+    if proc.returncode != 0:
+        tail = log.read_text(errors="replace").splitlines()[-40:]
+        print("\n".join(tail), file=sys.stderr)
+        raise SystemExit(f"fastchess exited {proc.returncode}; log: {log}")
+
+
+def finished_games(pgn: Path, expected: int, log: Path) -> list[dict]:
+    games = fit_elo.load_games([pgn])
+    if len(games) != expected:
+        raise SystemExit(f"{pgn} has {len(games)} games, expected {expected}. Log: {log}")
+    bad = [game.get("Termination") for game in games if game.get("Termination") not in fit_elo.SCORED]
+    if bad:
+        raise SystemExit(f"{pgn} has unscored terminations {bad}. A crash is not a rated game. Log: {log}")
+    return games
 
 
 def play_calibration(fastchess: Path, sf17: Path, sf19: Path, rounds: int, concurrency: int, tc: str, pgn: Path, log: Path) -> None:
@@ -178,17 +200,13 @@ def play_calibration(fastchess: Path, sf17: Path, sf19: Path, rounds: int, concu
         "-pgnout", f"file={pgn}", "append=false", "-recover",
     ]
     print(f"\n== sf17-2200 vs sf19-2200  rounds={rounds} (x2 colors) ==", flush=True)
-    with log.open("w") as handle:
-        proc = subprocess.run(cmd, stdout=handle, stderr=subprocess.STDOUT)
-    if proc.returncode != 0:
-        tail = log.read_text(errors="replace").splitlines()[-40:]
-        print("\n".join(tail), file=sys.stderr)
-        raise SystemExit(f"fastchess exited {proc.returncode}; log: {log}")
+    run_fastchess(cmd, log, pgn.parent.parent)
+    finished_games(pgn, rounds * 2, log)
 
 
 def points_by_elo(pgn_dir: Path, engine_name: str, family: str) -> dict[int, tuple[float, int]]:
     totals: dict[int, list[float]] = {}
-    for game in fit_elo.load_games([pgn_dir]):
+    for game in scored_games(pgn_dir):
         score = fit_elo.player_score(game, engine_name)
         if score is None:
             continue
@@ -213,7 +231,8 @@ def refine_targets(scores: dict[int, tuple[float, int]]) -> list[int]:
         if rated[low] >= 0.5 >= rated[high]:
             targets = {low, high}
             if high - low > 100:
-                interior = list(range(low + 100, high, 100))
+                start = (low // 100 + 1) * 100
+                interior = list(range(start, high, 100))
                 interior.sort(key=lambda elo: abs(elo - (low + high) / 2))
                 targets.update(interior[:2])
             return sorted(targets)
@@ -224,7 +243,7 @@ def refine_targets(scores: dict[int, tuple[float, int]]) -> list[int]:
 
 def sf19_mle(pgn_dir: Path, engine_name: str) -> float | None:
     pairs = []
-    for game in fit_elo.load_games([pgn_dir]):
+    for game in scored_games(pgn_dir):
         score = fit_elo.player_score(game, engine_name)
         if score is None:
             continue
@@ -287,12 +306,13 @@ def main(argv: list[str] | None = None) -> int:
         if not DIAL_MIN <= elo <= DIAL_MAX:
             raise SystemExit(f"UCI_Elo {elo} is outside {DIAL_MIN}–{DIAL_MAX}")
         opponent = sf19 if family == "sf19" else sf17
+        pgn = pgn_dir / f"{family}-{elo}.pgn"
         play_match(
             fastchess, wrapper, args.name, opponent, f"{family}-{elo}", elo,
             args.rounds, args.concurrency, args.tc,
-            pgn_dir / f"{family}-{elo}.pgn", log_dir / f"{family}-{elo}.log",
+            pgn, log_dir / f"{family}-{elo}.log",
         )
-        return fit_elo.main([str(pgn_dir), "--engine-name", args.name])
+        return fit_elo.main([str(pgn), "--engine-name", args.name])
 
     print(
         f"Bracket for {args.name} at {args.tc}, concurrency {args.concurrency}. "

@@ -19,7 +19,7 @@ These are the failures from the 2026-11-16 run. The scripts already avoid the on
 
 ## The fit
 
-- The 95% interval is where log likelihood drops by 1.920729 from the maximum. Walking the search in the wrong direction returns the ends of the search range (for example 800–3200) and looks like a failed fit. Use `scripts/fit_elo.py`.
+- The 95% interval is where log likelihood drops by 1.920729 from the maximum. If a search walks the wrong way, or stops at a rating that is still inside the interval, it reports the search bounds (for example 800–3600) as though they were the interval. `scripts/fit_elo.py` leaves an end open (`-inf` or `+inf`) when the likelihood never crosses the threshold, and it marks an estimate that sits on the 800 or 3600 grid edge.
 - A 0-for-n score against a full-strength engine means the engine is at least about `400 * log10((1 - p) / p)` Elo behind, with `p` the Clopper-Pearson 95% upper tail `1 - 0.05^(1/n)` (about 275 Elo for 0/16). That gap is at this time control. A CCRL 40/15 list number is a different scale.
 - White and Black can differ by a couple of hundred Elo in a sample of this size. Report both. The headline is the combined sample.
 - Official Stockfish 17 and 19 binaries are the anchors. A local `-O3` build of an old engine, especially one compiled with `-fno-aggressive-loop-optimizations`, is a few tens of Elo off the profiled binary a rating list measured. That does not move a 0-for-16 result.

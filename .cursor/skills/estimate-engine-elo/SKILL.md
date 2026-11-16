@@ -43,6 +43,8 @@ What it plays, at `8+0.08`, one thread, 16 MB hash, `UCI_LimitStrength=true`, bo
 
 `--skip-cross` skips step 3. `--calibrate` adds a 16-round Stockfish 17 vs Stockfish 19 match at `UCI_Elo` 2200, which remeasures the dial gap. `--fit-only` refits `--out/pgn` without playing. `--only sf19:2000 --rounds 4` plays one cell.
 
+After editing the scripts, run `python3 .cursor/skills/estimate-engine-elo/scripts/test_fit.py`. It does not play games.
+
 To refit PGNs from a finished run:
 
 ```bash

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Fit an Elo estimate from fastchess PGNs produced by run_bracket.py.
 
-Game scores of 0, 1/2, and 1 are treated as draws from the logistic Elo
-model. The 95% interval is the profile likelihood: ratings whose log
-likelihood is within 1.920729 of the maximum (a chi-square 3.84 drop on
-one parameter). Stockfish 17 and Stockfish 19 are fit separately. Their
-UCI_Elo labels are not the same strength.
+Each game contributes its score (0, 1/2, or 1) to the logistic Elo
+likelihood. The 95% interval is the profile likelihood: ratings whose log
+likelihood is within 1.920729 of the maximum (half of the 3.84 chi-square
+threshold on one parameter). An end that never crosses that threshold is
+left open instead of being reported as the edge of the search. Stockfish 17
+and Stockfish 19 are fit separately. Their UCI_Elo labels are not the same
+strength.
 """
 
 from __future__ import annotations
@@ -54,7 +56,17 @@ def infer_engine_name(games: list[dict]) -> str | None:
                 counts[name] += 1
     if not counts:
         return None
-    return max(counts, key=counts.get)
+    most = max(counts.values())
+    names = [name for name, count in counts.items() if count == most]
+    # A two-engine match increments both names equally. Don't guess which one
+    # is the engine under test.
+    if len(names) != 1:
+        return None
+    return names[0]
+
+
+def stockfish_major(family: str) -> int:
+    return int(family.removeprefix("sf"))
 
 
 def player_score(game: dict, name: str) -> float | None:
@@ -97,18 +109,23 @@ def maximum_likelihood(pairs: list[tuple[float, float]], scale: float = 1.0) -> 
     return best_rating, best_ll
 
 
-def profile_interval(pairs: list[tuple[float, float]], mle: float, peak: float) -> tuple[float, float]:
+def profile_interval(
+    pairs: list[tuple[float, float]], mle: float, peak: float
+) -> tuple[float | None, float | None]:
+    """Return (low, high). An end is None when the likelihood never drops enough."""
     target = peak - PROFILE_DROP
 
-    def walk(step: float) -> float:
+    def walk(step: float) -> float | None:
         rating = mle
         for _ in range(400):
+            rating += step
             if log_likelihood(pairs, rating) < target:
                 return rating
-            rating += step
-        return rating
+        return None
 
-    def bisect(inside: float, outside: float) -> float:
+    def bisect(inside: float, outside: float | None) -> float | None:
+        if outside is None or log_likelihood(pairs, outside) >= target:
+            return None
         for _ in range(60):
             mid = (inside + outside) / 2.0
             if log_likelihood(pairs, mid) >= target:
@@ -118,6 +135,12 @@ def profile_interval(pairs: list[tuple[float, float]], mle: float, peak: float) 
         return inside
 
     return bisect(mle, walk(-10.0)), bisect(mle, walk(10.0))
+
+
+def format_interval(low: float | None, high: float | None) -> str:
+    left = f"{low:.0f}" if low is not None else "-inf"
+    right = f"{high:.0f}" if high is not None else "+inf"
+    return f"[{left}, {right}]"
 
 
 def standard_error(pairs: list[tuple[float, float]], mle: float) -> float:
@@ -190,7 +213,7 @@ def format_report(games: list[dict], engine_name: str, sf17_shift: float) -> str
             left, right = LIMITED.fullmatch(white), LIMITED.fullmatch(black)
             if left and right and left.group(2) == right.group(2):
                 # Score from the higher Stockfish version's point of view.
-                if int(left.group(1)[2:]) >= int(right.group(1)[2:]):
+                if stockfish_major(left.group(1)) >= stockfish_major(right.group(1)):
                     calibration.append((SCORE[game["Result"]], white, black))
                 else:
                     calibration.append((1.0 - SCORE[game["Result"]], black, white))
@@ -251,8 +274,12 @@ def format_report(games: list[dict], engine_name: str, sf17_shift: float) -> str
             low, high = profile_interval(pairs, mle, peak)
             se = standard_error(pairs, mle)
             fits[family] = (pairs, mle, peak)
+            edge = ""
+            if mle <= 800.25 or mle >= 3599.75:
+                edge = "  (at the 800–3600 search edge)"
             lines.append(
-                f"  {family}  n={len(pairs):3d}  {mle:.0f}  95% profile [{low:.0f}, {high:.0f}]  se {se:.0f}"
+                f"  {family}  n={len(pairs):3d}  {mle:.0f}  95% profile {format_interval(low, high)}"
+                f"  se {se:.0f}{edge}"
             )
             for color in ("W", "B"):
                 colored = [(g["score"], float(g["label"])) for g in limited if g["family"] == family and g["color"] == color]
@@ -269,15 +296,14 @@ def format_report(games: list[dict], engine_name: str, sf17_shift: float) -> str
                     f"likelihood gain {gain:.2f}); interval with a free slope is about {wlow:.0f}–{whigh:.0f}"
                 )
 
-        shift = sf17_shift
-        shift_note = "the stored 2026-11-16 dial gap"
-        if calibration:
-            points = sum(score for score, _, _ in calibration)
-            n = len(calibration)
-            p = points / n
-            if 0 < p < 1:
-                shift = 400.0 * math.log10(p / (1.0 - p))
-                shift_note = "the dial gap measured in this PGN set"
+        measured = dial_gaps(calibration)
+        sf17_gap = measured.get(("sf19", "sf17"))
+        shift = sf17_gap if sf17_gap is not None else sf17_shift
+        shift_note = (
+            "the dial gap measured in this PGN set"
+            if sf17_gap is not None
+            else "the stored 2026-11-16 dial gap"
+        )
         if "sf19" in fits and "sf17" in fits and shift:
             shifted = list(fits["sf19"][0]) + [
                 (score, label - shift) for score, label in fits["sf17"][0]
@@ -287,25 +313,59 @@ def format_report(games: list[dict], engine_name: str, sf17_shift: float) -> str
             lines.append("")
             lines.append(
                 f"On the sf19 dial, with sf17 labels shifted down by {shift:.0f} ({shift_note}): "
-                f"{mle:.0f}  95% profile [{low:.0f}, {high:.0f}]  n={len(shifted)}"
+                f"{mle:.0f}  95% profile {format_interval(low, high)}  n={len(shifted)}"
             )
             lines.append(
                 "  Quote the separate sf19 and sf17 ratings. The shifted figure is a check that they agree."
             )
 
     if calibration:
-        points = sum(score for score, _, _ in calibration)
-        n = len(calibration)
-        p = points / n
         lines.append("")
-        newer, older = calibration[0][1], calibration[0][2]
+        lines.extend(dial_lines(calibration))
+    return "\n".join(lines) + "\n"
+
+
+def dial_gaps(calibration: list[tuple[float, str, str]]) -> dict[tuple[str, str], float]:
+    """Elo by which the newer Stockfish outrates the older one, for a single shared label."""
+    grouped: dict[tuple[str, str, str], list[float]] = defaultdict(list)
+    for score, newer, older in calibration:
+        newer_match, older_match = LIMITED.fullmatch(newer), LIMITED.fullmatch(older)
+        if not newer_match or not older_match:
+            continue
+        grouped[(newer_match.group(1), older_match.group(1), newer_match.group(2))].append(score)
+    gaps: dict[tuple[str, str], float] = {}
+    labels: dict[tuple[str, str], set[str]] = defaultdict(set)
+    by_pair: dict[tuple[str, str], list[float]] = defaultdict(list)
+    for (newer, older, label), scores in grouped.items():
+        labels[(newer, older)].add(label)
+        points = sum(scores)
+        n = len(scores)
+        p = points / n
+        if 0 < p < 1:
+            by_pair[(newer, older)].append(400.0 * math.log10(p / (1.0 - p)))
+    for pair, values in by_pair.items():
+        # Matches at two labels are not one binomial sample.
+        if len(labels[pair]) == 1 and len(values) == 1:
+            gaps[pair] = values[0]
+    return gaps
+
+
+def dial_lines(calibration: list[tuple[float, str, str]]) -> list[str]:
+    grouped: dict[tuple[str, str], list[float]] = defaultdict(list)
+    for score, newer, older in calibration:
+        grouped[(newer, older)].append(score)
+    lines = []
+    for (newer, older), scores in sorted(grouped.items()):
+        points = sum(scores)
+        n = len(scores)
+        p = points / n
         lines.append(f"Dial check {newer} vs {older}: {newer} scored {points:.1f}/{n} ({100 * p:.1f}%)")
         if 0 < p < 1:
             diff = 400.0 * math.log10(p / (1.0 - p))
             se_p = math.sqrt(p * (1.0 - p) / n)
             se = 400.0 / (math.log(10) * p * (1.0 - p)) * se_p
             lines.append(f"  {newer} is {diff:.0f} Elo stronger at the same UCI_Elo (se {se:.0f})")
-    return "\n".join(lines) + "\n"
+    return lines
 
 
 def main(argv: list[str] | None = None) -> int:
