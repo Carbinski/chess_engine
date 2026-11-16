@@ -25,9 +25,9 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class Ganymede : public Search {
+class Helios : public Search {
 public:
-    Ganymede();
+    Helios();
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 
@@ -38,6 +38,7 @@ private:
     };
 
     int search(chess::Board& board, int depth, int alpha, int beta);
+    int quiescence(chess::Board& board, int alpha, int beta);
     bool check_time_expired();
     TtHit probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta);
     void store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best);

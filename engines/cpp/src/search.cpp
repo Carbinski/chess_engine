@@ -48,9 +48,9 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-Ganymede::Ganymede() {}
+Helios::Helios() {}
 
-chess::Move Ganymede::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Helios::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -127,13 +127,12 @@ chess::Move Ganymede::select_move(const chess::Board& board, std::optional<int> 
     return best_move;
 }
 
-int Ganymede::search(chess::Board& board, int depth, int alpha, int beta) {
+int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
     ++counters_.nodes;
     if (check_time_expired()) return 0;
     if (is_insufficient_material(board)) return 0;
     if (depth == 0) {
-        if (is_path_draw(board)) return 0;
-        return evaluate(board);
+        return quiescence(board, alpha, beta);
     }
 
     Movelist moves;
@@ -180,7 +179,41 @@ int Ganymede::search(chess::Board& board, int depth, int alpha, int beta) {
     return ply.best_eval;
 }
 
-bool Ganymede::check_time_expired() {
+int Helios::quiescence(Board& board, int alpha, int beta) {
+    const int stand_pat = evaluate(board);
+    const bool white_to_move = board.sideToMove() == Color::WHITE;
+
+    if (white_to_move) {
+        if (stand_pat >= beta) return beta;
+        if (stand_pat > alpha) alpha = stand_pat;
+    } else {
+        if (stand_pat <= alpha) return alpha;
+        if (stand_pat < beta) beta = stand_pat;
+    }
+
+    Movelist captures;
+    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(captures, board);
+
+    // TODO: Add move ordering
+    for (const Move& move : captures) {
+        make_move(board, move);
+        board.makeMove(move);
+        const int eval = quiescence(board, alpha, beta);
+        board.unmakeMove(move);
+        unmake_move(move);
+
+        if (white_to_move) {
+            if (eval >= beta) return beta;
+            if (eval > alpha) alpha = eval;
+        } else {
+            if (eval <= alpha) return alpha;
+            if (eval < beta) beta = eval;
+        }
+    }
+    return white_to_move ? alpha : beta;
+}
+
+bool Helios::check_time_expired() {
     if (out_of_time_) return true;
     if (counters_.nodes % 2048 != 0) return false;
 
@@ -192,7 +225,7 @@ bool Ganymede::check_time_expired() {
     return out_of_time_;
 }
 
-Ganymede::TtHit Ganymede::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
+Helios::TtHit Helios::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
     TtHit hit;
     ++counters_.tt_probes;
     if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
@@ -216,10 +249,10 @@ Ganymede::TtHit Ganymede::probe_tt(std::uint64_t hash, int depth, int& alpha, in
     return hit;
 }
 
-void Ganymede::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
+void Helios::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
     transposition_table_.store_position(Entry{hash, depth, score, bound_of(score, alpha, beta), best});
 }
 
-std::string_view Ganymede::name() const {
-    return "Ganymede";
+std::string_view Helios::name() const {
+    return "Helios";
 }
