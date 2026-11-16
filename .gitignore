@@ -26,8 +26,12 @@ node_modules/
 .next/
 out/
 
-# Editors and OS
-.cursor/
+# Editors and OS. .cursor/skills is committed so Cursor can load this repo's skills.
+.cursor/*
+!.cursor/skills/
+!.cursor/skills/**
+.cursor/skills/**/__pycache__/
+.cursor/skills/**/*.py[cod]
 .idea/
 .vscode/
 *.iml
