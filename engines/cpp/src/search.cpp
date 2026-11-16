@@ -55,7 +55,7 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
     counters_ = {};
-    counters_.nodes = 1;  // root; search() counts every position below it
+    counters_.nodes = 1;  // root; search() and quiescence() count every position below it
     move_ordering_.clear();
 
     Board position = board;
@@ -128,12 +128,13 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
 }
 
 int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
-    ++counters_.nodes;
-    if (check_time_expired()) return 0;
-    if (is_insufficient_material(board)) return 0;
     if (depth == 0) {
         return quiescence(board, alpha, beta);
     }
+
+    ++counters_.nodes;
+    if (check_time_expired()) return 0;
+    if (is_insufficient_material(board)) return 0;
 
     Movelist moves;
     movegen::legalmoves(moves, board);
@@ -180,37 +181,49 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
 }
 
 int Helios::quiescence(Board& board, int alpha, int beta) {
-    const int stand_pat = evaluate(board);
-    const bool white_to_move = board.sideToMove() == Color::WHITE;
+    ++counters_.nodes;
+    if (check_time_expired()) return 0;
+    if (is_insufficient_material(board)) return 0;
 
-    if (white_to_move) {
-        if (stand_pat >= beta) return beta;
-        if (stand_pat > alpha) alpha = stand_pat;
-    } else {
-        if (stand_pat <= alpha) return alpha;
-        if (stand_pat < beta) beta = stand_pat;
+    const bool white_to_move = board.sideToMove() == Color::WHITE;
+    const bool in_check = board.inCheck();
+
+    Movelist moves;
+    if (in_check) {
+        movegen::legalmoves(moves, board);
+        if (moves.empty()) return mate_or_stalemate(board);
+    }
+    if (is_path_draw(board)) return 0;
+
+    Ply ply = Ply::start(white_to_move, alpha, beta);
+    if (!in_check) {
+        ply.apply_eval(evaluate(board), Move::NO_MOVE);
+        if (ply.result() == Ply::Result::Cutoff) {
+            return ply.best_eval;
+        }
+        movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
     }
 
-    Movelist captures;
-    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(captures, board);
+    MoveOrdering::Picker picker = move_ordering_.pick(moves, Move::NO_MOVE, board);
+    while (const std::optional<Move> picked = picker.next()) {
+        const Move move = *picked;
 
-    // TODO: Add move ordering
-    for (const Move& move : captures) {
         make_move(board, move);
         board.makeMove(move);
-        const int eval = quiescence(board, alpha, beta);
+        const int eval = with_mate_distance(quiescence(board, ply.alpha, ply.beta));
         board.unmakeMove(move);
         unmake_move(move);
+        if (out_of_time_) {
+            return 0;
+        }
 
-        if (white_to_move) {
-            if (eval >= beta) return beta;
-            if (eval > alpha) alpha = eval;
-        } else {
-            if (eval <= alpha) return alpha;
-            if (eval < beta) beta = eval;
+        ply.apply_eval(eval, move);
+        const Ply::Result result = ply.result();
+        if (result == Ply::Result::Cutoff || result == Ply::Result::Mate) {
+            break;
         }
     }
-    return white_to_move ? alpha : beta;
+    return ply.best_eval;
 }
 
 bool Helios::check_time_expired() {
