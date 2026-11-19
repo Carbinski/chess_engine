@@ -21,11 +21,30 @@ void log_completed_search(std::string_view engine_name,
                           bool full_budget,
                           std::optional<int> committed_eval,
                           const Move& move,
-                          std::chrono::steady_clock::time_point search_start);
-bool in_mate_band(int score);
-int delta_gain(const Board& board, Move move);
-int max_delta_gain(const Board& board);
-bool delta_prunes(bool white_to_move, int stand_pat, int gain, int alpha, int beta);
+                          std::chrono::steady_clock::time_point search_start) {
+    logging::SearchStats stats;
+    stats.engine = std::string(engine_name);
+    stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
+    stats.depth = depth_completed;
+    stats.nodes = counters.nodes;
+    stats.tt_probes = counters.tt_probes;
+    stats.tt_hits = counters.tt_hits;
+    stats.tt_cutoffs = counters.tt_cutoffs;
+    stats.first_cutoffs = counters.first_cutoffs;
+    stats.budget_ms = budget_ms;
+    stats.full_budget = full_budget;
+    stats.score = committed_eval;
+    stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - search_start)
+                        .count();
+    if (move != Move::NO_MOVE) {
+        stats.move = uci::moveToUci(move);
+    }
+    if (logging::should_include_fen()) {
+        stats.fen = board.getFen();
+    }
+    logging::log_search(std::move(stats));
+}
 
 }
 
@@ -185,24 +204,9 @@ int Helios::quiescence(Board& board, int alpha, int beta) {
         movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
     }
 
-    const bool use_delta = !in_check && !in_mate_band(ply.alpha) && !in_mate_band(ply.beta);
-    int stand_pat = 0;
-    bool only_checks = false;
-    if (use_delta) {
-        stand_pat = ply.best_eval;
-        only_checks = delta_prunes(white_to_move, stand_pat, max_delta_gain(board), ply.alpha, ply.beta);
-    }
-    bool skipped = false;
-
     MoveOrdering::Picker picker = move_ordering_.pick(moves, Move::NO_MOVE, board);
     while (const std::optional<Move> picked = picker.next()) {
         const Move move = *picked;
-        if (use_delta && board.givesCheck(move) == CheckType::NO_CHECK &&
-            (only_checks ||
-             delta_prunes(white_to_move, stand_pat, delta_gain(board, move), ply.alpha, ply.beta))) {
-            skipped = true;
-            continue;
-        }
 
         make_move(board, move);
         board.makeMove(move);
@@ -218,10 +222,6 @@ int Helios::quiescence(Board& board, int alpha, int beta) {
         if (result == Ply::Result::Cutoff || result == Ply::Result::Mate) {
             break;
         }
-    }
-    
-    if (skipped && ply.result() == Ply::Result::Continue) {
-        return white_to_move ? ply.alpha : ply.beta;
     }
     return ply.best_eval;
 }
@@ -268,72 +268,4 @@ void Helios::store_tt(std::uint64_t hash, int depth, int score, int alpha, int b
 
 std::string_view Helios::name() const {
     return "Helios";
-}
-
-namespace {
-
-void log_completed_search(std::string_view engine_name,
-                          const Board& board,
-                          int depth_completed,
-                          const SearchCounters& counters,
-                          int budget_ms,
-                          bool full_budget,
-                          std::optional<int> committed_eval,
-                          const Move& move,
-                          std::chrono::steady_clock::time_point search_start) {
-    logging::SearchStats stats;
-    stats.engine = std::string(engine_name);
-    stats.side = board.sideToMove() == Color::WHITE ? "w" : "b";
-    stats.depth = depth_completed;
-    stats.nodes = counters.nodes;
-    stats.tt_probes = counters.tt_probes;
-    stats.tt_hits = counters.tt_hits;
-    stats.tt_cutoffs = counters.tt_cutoffs;
-    stats.first_cutoffs = counters.first_cutoffs;
-    stats.budget_ms = budget_ms;
-    stats.full_budget = full_budget;
-    stats.score = committed_eval;
-    stats.elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - search_start)
-                        .count();
-    if (move != Move::NO_MOVE) {
-        stats.move = uci::moveToUci(move);
-    }
-    if (logging::should_include_fen()) {
-        stats.fen = board.getFen();
-    }
-    logging::log_search(std::move(stats));
-}
-
-constexpr int delta_margin = 200;
-
-bool in_mate_band(int score) {
-    constexpr int mate_band = checkmate_score - 100'000;
-    return score > mate_band || score < -mate_band;
-}
-
-int delta_gain(const Board& board, Move move) {
-    int gain = piece_value(board.getCapturing<PieceType>(move)) + delta_margin;
-    if (move.typeOf() == Move::PROMOTION) {
-        gain += piece_value(move.promotionType()) - piece_value(PieceType::PAWN);
-    }
-    return gain;
-}
-
-int max_delta_gain(const Board& board) {
-    int gain = piece_value(PieceType::QUEEN) + delta_margin;
-    const Color side = board.sideToMove();
-    if (board.pieces(PieceType::PAWN, side) & Bitboard(Rank::rank(Rank::RANK_7, side))) {
-        gain += piece_value(PieceType::QUEEN) - piece_value(PieceType::PAWN);
-    }
-    return gain;
-}
-
-bool delta_prunes(bool white_to_move, int stand_pat, int gain, int alpha, int beta) {
-    if (white_to_move) {
-        return stand_pat + gain <= alpha;
-    }
-    return stand_pat - gain >= beta;
-}
-
 }
