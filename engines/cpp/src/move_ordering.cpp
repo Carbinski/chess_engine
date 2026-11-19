@@ -94,15 +94,6 @@ std::optional<chess::Move> MoveOrdering::Picker::next() {
     return move;
 }
 
-void MoveOrdering::order_captures(chess::Movelist& moves, const chess::Board& board) {
-    for (int i = 0; i < moves.size(); ++i) {
-        moves[i].setScore(static_cast<std::int16_t>(loud_score(board, moves[i])));
-    }
-    std::sort(moves.begin(), moves.end(), [](const chess::Move& a, const chess::Move& b) {
-        return a.score() > b.score();
-    });
-}
-
 int MoveOrdering::loud_score(const chess::Board& board, chess::Move move) {
     chess::PieceType victim = board.at(move.to()).type();
     if (move.typeOf() == chess::Move::ENPASSANT) {

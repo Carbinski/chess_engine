@@ -9,8 +9,6 @@
 #include <string_view>
 #include <chrono>
 
-struct Ply;
-
 struct SearchCounters {
     std::uint64_t nodes = 0;
     std::uint64_t tt_probes = 0;
@@ -41,7 +39,6 @@ private:
 
     int search(chess::Board& board, int depth, int alpha, int beta);
     int quiescence(chess::Board& board, int alpha, int beta);
-    void quiescence_search(chess::Board& board, Ply& ply, chess::Move move);
     bool check_time_expired();
     TtHit probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta);
     void store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best);
