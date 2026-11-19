@@ -45,6 +45,7 @@ public:
     }
 
     Picker pick(chess::Movelist& moves, chess::Move previous_best, const chess::Board& board) const;
+    static void order_captures(chess::Movelist& moves, const chess::Board& board);
     void record_cutoff(const chess::Board& board, const Picker& picker, int depth);
 
 private:
@@ -55,6 +56,9 @@ private:
     static int loud_score(const chess::Board& board, chess::Move move);
 
     static bool is_quiet(const chess::Board& board, chess::Move move) {
+        if (move.typeOf() == chess::Move::CASTLING) {
+            return true;
+        }
         if (move.typeOf() == chess::Move::PROMOTION || move.typeOf() == chess::Move::ENPASSANT) {
             return false;
         }

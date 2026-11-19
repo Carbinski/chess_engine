@@ -204,26 +204,44 @@ int Helios::quiescence(Board& board, int alpha, int beta) {
         movegen::legalmoves<movegen::MoveGenType::CAPTURE>(moves, board);
     }
 
-    MoveOrdering::Picker picker = move_ordering_.pick(moves, Move::NO_MOVE, board);
-    while (const std::optional<Move> picked = picker.next()) {
-        const Move move = *picked;
-
-        make_move(board, move);
-        board.makeMove(move);
-        const int eval = with_mate_distance(quiescence(board, ply.alpha, ply.beta));
-        board.unmakeMove(move);
-        unmake_move(move);
-        if (out_of_time_) {
-            return 0;
+    if (in_check) {
+        MoveOrdering::Picker picker = move_ordering_.pick(moves, Move::NO_MOVE, board);
+        while (const std::optional<Move> picked = picker.next()) {
+            quiescence_search(board, ply, *picked);
+            if (out_of_time_) {
+                return 0;
+            }
+            const Ply::Result result = ply.result();
+            if (result == Ply::Result::Cutoff || result == Ply::Result::Mate) {
+                break;
+            }
         }
-
-        ply.apply_eval(eval, move);
-        const Ply::Result result = ply.result();
-        if (result == Ply::Result::Cutoff || result == Ply::Result::Mate) {
-            break;
+    } else {
+        MoveOrdering::order_captures(moves, board);
+        for (int i = 0; i < moves.size(); ++i) {
+            quiescence_search(board, ply, moves[i]);
+            if (out_of_time_) {
+                return 0;
+            }
+            const Ply::Result result = ply.result();
+            if (result == Ply::Result::Cutoff || result == Ply::Result::Mate) {
+                break;
+            }
         }
     }
     return ply.best_eval;
+}
+
+void Helios::quiescence_search(Board& board, Ply& ply, Move move) {
+    make_move(board, move);
+    board.makeMove(move);
+    const int eval = with_mate_distance(quiescence(board, ply.alpha, ply.beta));
+    board.unmakeMove(move);
+    unmake_move(move);
+    if (out_of_time_) {
+        return;
+    }
+    ply.apply_eval(eval, move);
 }
 
 bool Helios::check_time_expired() {
