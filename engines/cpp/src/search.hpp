@@ -14,6 +14,7 @@ struct SearchCounters {
     std::uint64_t tt_probes = 0;
     std::uint64_t tt_hits = 0;
     std::uint64_t tt_cutoffs = 0;
+    std::uint64_t null_cutoffs = 0;
     std::uint64_t first_cutoffs = 0;
 };
 
@@ -37,7 +38,8 @@ private:
         std::optional<int> cutoff;
     };
 
-    int search(chess::Board& board, int depth, int alpha, int beta);
+    int search(chess::Board& board, int depth, int alpha, int beta, bool is_principal_variation, bool allow_null);
+    std::optional<int> null_cutoff(chess::Board& board, int depth, int alpha, int beta);
     int quiescence(chess::Board& board, int alpha, int beta);
     bool check_time_expired();
     TtHit probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta);

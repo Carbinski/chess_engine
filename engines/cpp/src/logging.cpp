@@ -185,6 +185,7 @@ private:
     std::uint64_t total_tt_probes_ = 0;
     std::uint64_t total_tt_hits_ = 0;
     std::uint64_t total_tt_cutoffs_ = 0;
+    std::uint64_t total_null_cutoffs_ = 0;
     std::uint64_t total_first_cutoffs_ = 0;
     long process_id_ = 0;
     std::string started_;
@@ -247,7 +248,7 @@ Logger::~Logger() {
 void Logger::open_trace() {
     constexpr std::string_view header =
         "engine\tgame\tmove_number\tside\tdepth\tnodes\tnps\telapsed_ms\tbudget_ms\tfull_budget\t"
-        "score\tmove\ttt_probes\ttt_hits\ttt_cutoffs\tfirst_cutoffs\tfen\n";
+        "score\tmove\ttt_probes\ttt_hits\ttt_cutoffs\tnull_cutoffs\tfirst_cutoffs\tfen\n";
     trace_.open(trace_path_, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!trace_) {
         std::cerr << "could not open " << trace_path_.string() << ": " << errno_message() << '\n';
@@ -336,6 +337,7 @@ void Logger::record(const SearchStats& stats) {
     total_tt_probes_ += stats.tt_probes;
     total_tt_hits_ += stats.tt_hits;
     total_tt_cutoffs_ += stats.tt_cutoffs;
+    total_null_cutoffs_ += stats.null_cutoffs;
     total_first_cutoffs_ += stats.first_cutoffs;
 }
 
@@ -359,7 +361,7 @@ void Logger::write_trace(const SearchStats& stats) {
         row << *stats.score;
     }
     row << '\t' << stats.move << '\t' << stats.tt_probes << '\t' << stats.tt_hits << '\t' << stats.tt_cutoffs << '\t'
-        << stats.first_cutoffs << '\t' << stats.fen << '\n';
+        << stats.null_cutoffs << '\t' << stats.first_cutoffs << '\t' << stats.fen << '\n';
 
     trace_ << row.str();
     trace_.flush();
@@ -396,6 +398,7 @@ void Logger::write_summary() {
             << "tt_probes: " << total_tt_probes_ << '\n'
             << "tt_hits: " << total_tt_hits_ << '\n'
             << "tt_cutoffs: " << total_tt_cutoffs_ << '\n'
+            << "null_cutoffs: " << total_null_cutoffs_ << '\n'
             << "first_cutoffs: " << total_first_cutoffs_ << '\n'
             << "tt_cutoff_pct: " << one_decimal(tt_cutoff_pct) << '\n';
 

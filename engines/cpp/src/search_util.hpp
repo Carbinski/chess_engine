@@ -2,8 +2,13 @@
 
 #include "evaluate.hpp"
 
+inline constexpr int minimum_checkmate_score = checkmate_score - 100'000;
+
+inline bool is_mate_score(int eval) {
+    return eval > minimum_checkmate_score || eval < -minimum_checkmate_score;
+}
+
 inline int with_mate_distance(int eval) {
-    constexpr int minimum_checkmate_score = checkmate_score - 100'000;
     if (eval > minimum_checkmate_score) {
         return eval - 1;
     }

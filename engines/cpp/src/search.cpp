@@ -30,6 +30,7 @@ void log_completed_search(std::string_view engine_name,
     stats.tt_probes = counters.tt_probes;
     stats.tt_hits = counters.tt_hits;
     stats.tt_cutoffs = counters.tt_cutoffs;
+    stats.null_cutoffs = counters.null_cutoffs;
     stats.first_cutoffs = counters.first_cutoffs;
     stats.budget_ms = budget_ms;
     stats.full_budget = full_budget;
@@ -77,7 +78,7 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
         MoveOrdering::Picker picker = move_ordering_.pick(moves, best_move, position);
         Ply ply = Ply::start(white_to_move, -checkmate_score, checkmate_score, best_move);
 
-        for (int tried = 0;; ++tried) {
+        for (int move_index = 0;; ++move_index) {
             const std::optional<Move> picked = picker.next();
             if (!picked) {
                 break;
@@ -89,7 +90,8 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
 
             make_move(position, move);
             position.makeMove(move);
-            const int eval = with_mate_distance(search(position, depth - 1, ply.alpha, ply.beta));
+            const int eval = with_mate_distance(
+                search(position, depth - 1, ply.alpha, ply.beta, move_index == 0, true));
             position.unmakeMove(move);
             unmake_move(move);
             if (out_of_time_) {
@@ -98,7 +100,7 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
             ply.apply_eval(eval, move);
             const Ply::Result result = ply.result();
             if (result == Ply::Result::Cutoff) {
-                if (tried == 0) {
+                if (move_index == 0) {
                     ++counters_.first_cutoffs;
                 }
                 move_ordering_.record_cutoff(position, picker, depth);
@@ -127,8 +129,9 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
     return best_move;
 }
 
-int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
-    if (depth == 0) {
+int Helios::search(chess::Board& board, int depth, int alpha, int beta, bool is_principal_variation,
+                   bool allow_null) {
+    if (depth <= 0) {
         return quiescence(board, alpha, beta);
     }
 
@@ -145,10 +148,18 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
     const TtHit hit = probe_tt(hash, depth, alpha, beta);
     if (hit.cutoff) return *hit.cutoff;
 
+    if (allow_null && !is_principal_variation) {
+        if (const std::optional<int> cutoff = null_cutoff(board, depth, alpha, beta)) {
+            ++counters_.null_cutoffs;
+            return *cutoff;
+        }
+        if (out_of_time_) return 0;
+    }
+
     MoveOrdering::Picker picker = move_ordering_.pick(moves, hit.hash_move, board);
 
     Ply ply = Ply::start(board.sideToMove() == Color::WHITE, alpha, beta);
-    for (int tried = 0;; ++tried) {
+    for (int move_index = 0;; ++move_index) {
         const std::optional<Move> picked = picker.next();
         if (!picked) {
             break;
@@ -156,7 +167,8 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
         const Move move = *picked;
         make_move(board, move);
         board.makeMove(move);
-        const int eval = with_mate_distance(search(board, depth - 1, ply.alpha, ply.beta));
+        const int eval = with_mate_distance(
+            search(board, depth - 1, ply.alpha, ply.beta, is_principal_variation && move_index == 0, true));
         board.unmakeMove(move);
         unmake_move(move);
         if (out_of_time_) {
@@ -165,7 +177,7 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
         ply.apply_eval(eval, move);
         const Ply::Result result = ply.result();
         if (result == Ply::Result::Cutoff) {
-            if (tried == 0) {
+            if (move_index == 0) {
                 ++counters_.first_cutoffs;
             }
             move_ordering_.record_cutoff(board, picker, depth);
@@ -178,6 +190,32 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta) {
 
     store_tt(hash, depth, ply.best_eval, alpha, beta, ply.best_move);
     return ply.best_eval;
+}
+
+std::optional<int> Helios::null_cutoff(chess::Board& board, int depth, int alpha, int beta) {
+    // Depth under 3 leaves no reduced search, a pass in check is illegal, and pawn endings can be zugzwang.
+    if (depth < 3 || board.inCheck() || !board.hasNonPawnMaterial(board.sideToMove())) {
+        return std::nullopt;
+    }
+    const bool white = board.sideToMove() == Color::WHITE;
+    const int bound = white ? beta : alpha;
+    if (is_mate_score(bound)) {
+        return std::nullopt;
+    }
+
+    const int reduction = depth > 6 ? 3 : 2;
+    const int null_alpha = white ? beta - 1 : alpha;
+    const int null_beta = white ? beta : alpha + 1;
+    board.makeNullMove();
+    const int score = search(board, depth - 1 - reduction, null_alpha, null_beta, false, false);
+    board.unmakeNullMove();
+    if (out_of_time_) {
+        return std::nullopt;
+    }
+    if (white ? score >= beta : score <= alpha) {
+        return bound;
+    }
+    return std::nullopt;
 }
 
 int Helios::quiescence(Board& board, int alpha, int beta) {
