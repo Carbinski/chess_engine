@@ -23,5 +23,5 @@ public:
     std::string_view name() const override;
 
 private:
-    Helios search_;
+    Icarus search_;
 };

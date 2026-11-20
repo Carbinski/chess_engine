@@ -26,9 +26,9 @@ public:
     virtual std::string_view name() const = 0;
 };
 
-class Helios : public Search {
+class Icarus : public Search {
 public:
-    Helios();
+    Icarus();
     chess::Move select_move(const chess::Board& board, std::optional<int> time_remaining_ms) override;
     std::string_view name() const override;
 

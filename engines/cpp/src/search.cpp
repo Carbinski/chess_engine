@@ -49,9 +49,9 @@ void log_completed_search(std::string_view engine_name,
 
 }
 
-Helios::Helios() {}
+Icarus::Icarus() {}
 
-chess::Move Helios::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
+chess::Move Icarus::select_move(const chess::Board& board, std::optional<int> time_remaining_ms) {
     start_ = std::chrono::steady_clock::now();
     budget_ms_ = time_remaining_ms.value_or(0) / 75;
     out_of_time_ = false;
@@ -129,7 +129,7 @@ chess::Move Helios::select_move(const chess::Board& board, std::optional<int> ti
     return best_move;
 }
 
-int Helios::search(chess::Board& board, int depth, int alpha, int beta, bool is_principal_variation,
+int Icarus::search(chess::Board& board, int depth, int alpha, int beta, bool is_principal_variation,
                    bool allow_null) {
     if (depth <= 0) {
         return quiescence(board, alpha, beta);
@@ -192,7 +192,7 @@ int Helios::search(chess::Board& board, int depth, int alpha, int beta, bool is_
     return ply.best_eval;
 }
 
-std::optional<int> Helios::null_cutoff(chess::Board& board, int depth, int alpha, int beta) {
+std::optional<int> Icarus::null_cutoff(chess::Board& board, int depth, int alpha, int beta) {
     // Depth under 3 leaves no reduced search, a pass in check is illegal, and pawn endings can be zugzwang.
     if (depth < 3 || board.inCheck() || !board.hasNonPawnMaterial(board.sideToMove())) {
         return std::nullopt;
@@ -218,7 +218,7 @@ std::optional<int> Helios::null_cutoff(chess::Board& board, int depth, int alpha
     return std::nullopt;
 }
 
-int Helios::quiescence(Board& board, int alpha, int beta) {
+int Icarus::quiescence(Board& board, int alpha, int beta) {
     ++counters_.nodes;
     if (check_time_expired()) return 0;
     if (is_insufficient_material(board)) return 0;
@@ -264,7 +264,7 @@ int Helios::quiescence(Board& board, int alpha, int beta) {
     return ply.best_eval;
 }
 
-bool Helios::check_time_expired() {
+bool Icarus::check_time_expired() {
     if (out_of_time_) return true;
     if (counters_.nodes % 2048 != 0) return false;
 
@@ -276,7 +276,7 @@ bool Helios::check_time_expired() {
     return out_of_time_;
 }
 
-Helios::TtHit Helios::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
+Icarus::TtHit Icarus::probe_tt(std::uint64_t hash, int depth, int& alpha, int& beta) {
     TtHit hit;
     ++counters_.tt_probes;
     if (const std::optional<Entry> entry = transposition_table_.get_position(hash)) {
@@ -300,10 +300,10 @@ Helios::TtHit Helios::probe_tt(std::uint64_t hash, int depth, int& alpha, int& b
     return hit;
 }
 
-void Helios::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
+void Icarus::store_tt(std::uint64_t hash, int depth, int score, int alpha, int beta, chess::Move best) {
     transposition_table_.store_position(Entry{hash, depth, score, bound_of(score, alpha, beta), best});
 }
 
-std::string_view Helios::name() const {
-    return "Helios";
+std::string_view Icarus::name() const {
+    return "Icarus";
 }
