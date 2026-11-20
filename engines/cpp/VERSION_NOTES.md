@@ -51,3 +51,11 @@ Search keeps a running midgame, endgame, and material total and updates it when 
 ## helios-v1
 
 Added quiescence sort. About 300 Elo stronger than ganymede-v3 (+301 ± 59 over 180 games).
+
+## helios-v3
+
+Castling is ordered with the other quiet moves. When the side to move is not in check, quiescence sorts captures by victim value and searches them in that order. Even with helios-v2 (0 ± 42 over 100 games at 10+0.1). The cheaper capture sort was removed in helios-v5. Castling stays a quiet move.
+
+## helios-v4
+
+Quiescence uses the full move picker again. Delta pruning skips a capture whose material gain cannot raise the score, unless the move gives check. Against helios-v2, 43.5/100 (−45 ± 48 over 100 games at 10+0.1; the interval covers 0). About 4–8% slower than helios-v2 on three 2-second searches. Removed in helios-v5.
