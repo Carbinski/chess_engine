@@ -47,3 +47,7 @@ About 30 Elo stronger than freya-v7 (+30 ± 18 over 1,001 games). Every piece ha
 ## ganymede-v2
 
 Search keeps a running midgame, endgame, and material total and updates it when a move is made or unmade. A leaf score blends that total by game phase, the same blend as ganymede-v1.
+
+## helios-v1
+
+Added quiescence sort. About 300 Elo stronger than ganymede-v3 (+301 ± 59 over 180 games).
