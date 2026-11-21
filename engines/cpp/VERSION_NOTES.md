@@ -59,3 +59,7 @@ Castling is ordered with the other quiet moves. When the side to move is not in 
 ## helios-v4
 
 Quiescence uses the full move picker again. Delta pruning skips a capture whose material gain cannot raise the score, unless the move gives check. Against helios-v2, 43.5/100 (−45 ± 48 over 100 games at 10+0.1; the interval covers 0). About 4–8% slower than helios-v2 on three 2-second searches. Removed in helios-v5.
+
+## icarus-v2
+
+A null-move cutoff is stored in the transposition table at the current depth, so a later probe of that position can cut off without repeating the reduced search. An earlier hash move is kept when one exists. Against icarus-v1, 24/50 (−14 ± 61 over 50 games at 10+0.1; the interval covers 0). Search speed was 13.2 million nodes per second, the same as icarus-v1.
