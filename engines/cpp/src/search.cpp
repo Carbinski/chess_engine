@@ -151,6 +151,7 @@ int Icarus::search(chess::Board& board, int depth, int alpha, int beta, bool is_
     if (allow_null && !is_principal_variation) {
         if (const std::optional<int> cutoff = null_cutoff(board, depth, alpha, beta)) {
             ++counters_.null_cutoffs;
+            store_tt(hash, depth, *cutoff, alpha, beta, hit.hash_move);
             return *cutoff;
         }
         if (out_of_time_) return 0;
